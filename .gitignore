@@ -13,3 +13,55 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# ==============================
+# TripLedger - Git Ignore
+# ==============================
+
+# Environment variables / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+Thumbs.db
+
+# Python logs
+*.log
+
+# Database / local data
+*.sqlite
+*.sqlite3
+
+# Android / Gradle
+.gradle/
+**/build/
+
+# Android Studio generated files
+.externalNativeBuild/
+.cxx/
+
+# Keystore / signing files
+*.jks
+*.keystore
+
+# Temporary files
+*.tmp
+*.temp
