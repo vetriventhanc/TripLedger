@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class UserRegister(BaseModel):
@@ -12,8 +14,7 @@ class UserResponse(BaseModel):
     name: str
     email: EmailStr
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserLogin(BaseModel):
@@ -24,3 +25,25 @@ class UserLogin(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+
+class TripCreate(BaseModel):
+    title: str
+    destination: str
+    start_date: date
+    end_date: date
+    description: str | None = None
+    cover_photo: str | None = None
+
+
+class TripResponse(BaseModel):
+    id: int
+    user_id: int
+    title: str
+    destination: str
+    start_date: date
+    end_date: date
+    description: str | None
+    cover_photo: str | None
+
+    model_config = ConfigDict(from_attributes=True)
