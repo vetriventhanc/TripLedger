@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr
 
@@ -45,5 +45,35 @@ class TripResponse(BaseModel):
     end_date: date
     description: str | None
     cover_photo: str | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TripPhotoResponse(BaseModel):
+    id: int
+    trip_id: int
+    photo_url: str
+    caption: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class TripExpenseCreate(BaseModel):
+    title: str
+    amount: float
+    category: str
+    expense_date: date
+    notes: str | None = None
+
+
+class TripExpenseResponse(BaseModel):
+    id: int
+    trip_id: int
+    title: str
+    amount: float
+    category: str
+    expense_date: date
+    notes: str | None
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

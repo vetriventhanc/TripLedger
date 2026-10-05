@@ -1,10 +1,16 @@
 package com.example.tripledger.data.remote
 
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.Part
+import retrofit2.http.Path
 
 interface ApiService {
 
@@ -22,4 +28,73 @@ interface ApiService {
     suspend fun getCurrentUser(
         @Header("Authorization") authorization: String
     ): Response<UserResponse>
+
+    @POST("trips")
+    suspend fun createTrip(
+        @Header("Authorization") authorization: String,
+        @Body request: TripCreateRequest
+    ): Response<TripResponse>
+
+    @GET("trips")
+    suspend fun getTrips(
+        @Header("Authorization") authorization: String
+    ): Response<List<TripResponse>>
+
+    @GET("trips/{tripId}")
+    suspend fun getTrip(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int
+    ): Response<TripResponse>
+
+    @DELETE("trips/{tripId}")
+    suspend fun deleteTrip(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int
+    ): Response<Unit>
+
+    @Multipart
+    @POST("trips/{tripId}/photos")
+    suspend fun uploadTripPhoto(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int,
+        @Part photo: MultipartBody.Part
+    ): Response<TripPhotoResponse>
+
+    @GET("trips/{tripId}/photos")
+    suspend fun getTripPhotos(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int
+    ): Response<List<TripPhotoResponse>>
+
+    @DELETE("trips/photos/{photoId}")
+    suspend fun deleteTripPhoto(
+        @Header("Authorization") authorization: String,
+        @Path("photoId") photoId: Int
+    ): Response<Unit>
+
+    @POST("trips/{tripId}/expenses")
+    suspend fun createExpense(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int,
+        @Body request: TripExpenseCreateRequest
+    ): Response<TripExpenseResponse>
+
+    @GET("trips/{tripId}/expenses")
+    suspend fun getTripExpenses(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int
+    ): Response<List<TripExpenseResponse>>
+
+    @GET("trips/{tripId}/expenses/{expenseId}")
+    suspend fun getExpense(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int,
+        @Path("expenseId") expenseId: Int
+    ): Response<TripExpenseResponse>
+
+    @DELETE("trips/expenses/{expenseId}")
+    suspend fun deleteExpense(
+        @Header("Authorization") authorization: String,
+        @Path("expenseId") expenseId: Int
+    ): Response<Unit>
 }
