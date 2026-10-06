@@ -2,13 +2,74 @@ package com.example.tripledger.data.repository
 
 import com.example.tripledger.data.remote.ApiService
 import com.example.tripledger.data.remote.TripCreateRequest
+import com.example.tripledger.data.remote.TripExpenseAnalyticsResponse
+import com.example.tripledger.data.remote.TripOverviewResponse
 import com.example.tripledger.data.remote.TripPhotoResponse
 import com.example.tripledger.data.remote.TripResponse
+import com.example.tripledger.data.remote.TripTimelineResponse
 import okhttp3.MultipartBody
 
 class TripRepository(
     private val apiService: ApiService
 ) {
+
+    suspend fun getTripOverview(
+        token: String,
+        tripId: Int
+    ): Result<TripOverviewResponse> {
+        return try {
+            val response = apiService.getTripOverview(
+                authorization = "Bearer $token",
+                tripId = tripId
+            )
+
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(
+                    Exception("Empty response")
+                )
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to load trip overview"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTripTimeline(
+        token: String,
+        tripId: Int
+    ): Result<TripTimelineResponse> {
+        return try {
+            val response = apiService.getTripTimeline(
+                authorization = "Bearer $token",
+                tripId = tripId
+            )
+
+            if (response.isSuccessful) {
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(
+                    Exception("Empty response")
+                )
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to load trip timeline"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 
     suspend fun createTrip(
         token: String,
@@ -75,6 +136,33 @@ class TripRepository(
                     Exception(
                         response.errorBody()?.string()
                             ?: "Failed to load trip"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateTrip(
+        token: String,
+        tripId: Int,
+        request: TripCreateRequest
+    ): Result<TripResponse> {
+        return try {
+            val response = apiService.updateTrip(
+                authorization = "Bearer $token",
+                tripId = tripId,
+                request = request
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to update trip"
                     )
                 )
             }
@@ -177,6 +265,58 @@ class TripRepository(
                     Exception(
                         response.errorBody()?.string()
                             ?: "Failed to delete photo"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadTripCoverPhoto(
+        token: String,
+        tripId: Int,
+        photo: MultipartBody.Part
+    ): Result<TripResponse> {
+        return try {
+            val response = apiService.uploadTripCoverPhoto(
+                authorization = "Bearer $token",
+                tripId = tripId,
+                photo = photo
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to upload cover photo"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getExpenseAnalytics(
+        token: String,
+        tripId: Int
+    ): Result<TripExpenseAnalyticsResponse> {
+        return try {
+            val response = apiService.getExpenseAnalytics(
+                authorization = "Bearer $token",
+                tripId = tripId
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to load expense analytics"
                     )
                 )
             }

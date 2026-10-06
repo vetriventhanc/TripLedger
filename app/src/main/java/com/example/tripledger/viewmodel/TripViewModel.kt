@@ -6,7 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.tripledger.data.local.TokenManager
 import com.example.tripledger.data.remote.ApiService
 import com.example.tripledger.data.remote.TripCreateRequest
+import com.example.tripledger.data.remote.TripExpenseAnalyticsResponse
+import com.example.tripledger.data.remote.TripOverviewResponse
 import com.example.tripledger.data.remote.TripResponse
+import com.example.tripledger.data.remote.TripTimelineResponse
 import com.example.tripledger.data.repository.TripRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +19,7 @@ import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+
 
 sealed class TripState {
     data object Idle : TripState()
@@ -27,6 +31,10 @@ sealed class TripState {
     ) : TripState()
 
     data class Created(
+        val trip: TripResponse
+    ) : TripState()
+
+    data class Updated(
         val trip: TripResponse
     ) : TripState()
 
@@ -143,6 +151,56 @@ class TripViewModel(
     }
 
 
+    fun updateTrip(
+        tripId: Int,
+        title: String,
+        destination: String,
+        startDate: String,
+        endDate: String,
+        description: String?,
+        coverPhoto: String? = null
+    ) {
+        viewModelScope.launch {
+            _tripState.value = TripState.Loading
+
+            val token = tokenManager.token.first()
+
+            if (token.isNullOrBlank()) {
+                _tripState.value = TripState.Error(
+                    "You are not logged in"
+                )
+                return@launch
+            }
+
+            val request = TripCreateRequest(
+                title = title,
+                destination = destination,
+                start_date = startDate,
+                end_date = endDate,
+                description = description,
+                cover_photo = coverPhoto
+            )
+
+            val result = repository.updateTrip(
+                token = token,
+                tripId = tripId,
+                request = request
+            )
+
+            result
+                .onSuccess { trip ->
+                    _tripState.value = TripState.Updated(trip)
+                }
+                .onFailure { exception ->
+                    _tripState.value = TripState.Error(
+                        exception.message
+                            ?: "Failed to update trip"
+                    )
+                }
+        }
+    }
+
+
     fun deleteTrip(
         tripId: Int
     ) {
@@ -176,6 +234,7 @@ class TripViewModel(
         }
     }
 
+
     suspend fun getTrip(
         tripId: Int
     ): Result<TripResponse> {
@@ -194,6 +253,60 @@ class TripViewModel(
     }
 
 
+    suspend fun getTripOverview(
+        tripId: Int
+    ): Result<TripOverviewResponse> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        return repository.getTripOverview(
+            token = token,
+            tripId = tripId
+        )
+    }
+
+
+    suspend fun getTripTimeline(
+        tripId: Int
+    ): Result<TripTimelineResponse> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        return repository.getTripTimeline(
+            token = token,
+            tripId = tripId
+        )
+    }
+
+
+    suspend fun getExpenseAnalytics(
+        tripId: Int
+    ): Result<TripExpenseAnalyticsResponse> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        return repository.getExpenseAnalytics(
+            token = token,
+            tripId = tripId
+        )
+    }
+
+
     suspend fun uploadTripPhoto(
         tripId: Int,
         photo: MultipartBody.Part
@@ -206,6 +319,26 @@ class TripViewModel(
             )
         } else {
             repository.uploadTripPhoto(
+                token = token,
+                tripId = tripId,
+                photo = photo
+            )
+        }
+    }
+
+
+    suspend fun uploadTripCoverPhoto(
+        tripId: Int,
+        photo: MultipartBody.Part
+    ) = run {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            Result.failure(
+                Exception("You are not logged in")
+            )
+        } else {
+            repository.uploadTripCoverPhoto(
                 token = token,
                 tripId = tripId,
                 photo = photo

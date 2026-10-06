@@ -32,7 +32,7 @@ ALLOWED_CONTENT_TYPES = {
     "image/webp": ".webp",
 }
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 
 
 @router.post(
@@ -76,7 +76,7 @@ async def upload_trip_photo(
     if len(file_data) > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Image size must not exceed 10 MB",
+            detail="Image size must not exceed 50 MB",
         )
 
     # Create a unique filename.

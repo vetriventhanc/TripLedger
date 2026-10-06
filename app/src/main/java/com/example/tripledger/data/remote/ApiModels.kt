@@ -68,3 +68,54 @@ data class TripExpenseResponse(
     val notes: String?,
     val created_at: String
 )
+
+data class TripExpenseCategoryAnalytics(
+    val category: String,
+    val total: Double
+)
+
+data class TripExpenseDailyAnalytics(
+    val date: String,
+    val total: Double
+)
+
+data class TripExpenseAnalyticsResponse(
+    val trip_id: Int,
+    val total_expenses: Double,
+    val expense_count: Int,
+    val average_expense: Double,
+    val categories: List<TripExpenseCategoryAnalytics>,
+    val daily_spending: List<TripExpenseDailyAnalytics>
+)
+
+data class TripOverviewResponse(
+    val trip_id: Int,
+    val title: String,
+    val destination: String,
+    val start_date: String,
+    val end_date: String,
+    val duration_days: Int,
+    val total_expenses: Double,
+    val memory_count: Int
+)
+
+
+// ---------------------------------------------------------
+// Trip Timeline
+// ---------------------------------------------------------
+
+data class TripTimelineEvent(
+    val type: String,
+    val date: String,
+    val title: String,
+    val description: String?,
+    val amount: Double?,
+    val photo_url: String?
+)
+
+data class TripTimelineResponse(
+    val trip_id: Int,
+    val title: String,
+    val destination: String,
+    val events: List<TripTimelineEvent>
+)

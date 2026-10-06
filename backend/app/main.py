@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import models
 from app.database import Base, engine
-from app.routers import auth, expenses, photos, trips
+from app.routers import auth, expenses, photos, timeline, trips
 
 
 Base.metadata.create_all(bind=engine)
@@ -38,6 +38,7 @@ app.include_router(auth.router)
 app.include_router(trips.router)
 app.include_router(photos.router)
 app.include_router(expenses.router)
+app.include_router(timeline.router)
 
 
 @app.get("/")

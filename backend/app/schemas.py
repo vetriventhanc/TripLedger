@@ -58,6 +58,7 @@ class TripPhotoResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class TripExpenseCreate(BaseModel):
     title: str
     amount: float
@@ -77,3 +78,33 @@ class TripExpenseResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TripExpenseCategoryAnalytics(BaseModel):
+    category: str
+    total: float
+
+
+class TripExpenseDailyAnalytics(BaseModel):
+    date: date
+    total: float
+
+
+class TripExpenseAnalyticsResponse(BaseModel):
+    trip_id: int
+    total_expenses: float
+    expense_count: int
+    average_expense: float
+    categories: list[TripExpenseCategoryAnalytics]
+    daily_spending: list[TripExpenseDailyAnalytics]
+
+
+class TripOverviewResponse(BaseModel):
+    trip_id: int
+    title: str
+    destination: str
+    start_date: date
+    end_date: date
+    duration_days: int
+    total_expenses: float
+    memory_count: int

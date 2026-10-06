@@ -1,7 +1,12 @@
 package com.example.tripledger.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -10,9 +15,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -23,65 +25,91 @@ import com.example.tripledger.data.remote.TripResponse
 import com.example.tripledger.ui.screens.auth.LoginScreen
 import com.example.tripledger.ui.screens.auth.RegisterScreen
 import com.example.tripledger.ui.screens.dashboard.DashboardScreen
+import com.example.tripledger.ui.screens.expenseanalytics.ExpenseAnalyticsScreen
 import com.example.tripledger.ui.screens.expenses.ExpensesScreen
 import com.example.tripledger.ui.screens.profile.ProfileScreen
-import com.example.tripledger.ui.screens.trips.TripsScreen
 import com.example.tripledger.ui.screens.tripdetail.TripDetailScreen
-import com.example.tripledger.viewmodel.AuthState
+import com.example.tripledger.ui.screens.trips.TripsScreen
 import com.example.tripledger.viewmodel.AuthViewModel
 import com.example.tripledger.viewmodel.TripExpenseViewModel
 import com.example.tripledger.viewmodel.TripViewModel
 
+private const val ANIMATION_DURATION = 350
+
+private fun forwardEnter(): EnterTransition {
+    return fadeIn(
+        animationSpec = tween(ANIMATION_DURATION)
+    ) + slideInHorizontally(
+        initialOffsetX = { fullWidth ->
+            fullWidth / 3
+        },
+        animationSpec = tween(ANIMATION_DURATION)
+    )
+}
+
+private fun forwardExit(): ExitTransition {
+    return fadeOut(
+        animationSpec = tween(ANIMATION_DURATION)
+    ) + slideOutHorizontally(
+        targetOffsetX = { fullWidth ->
+            -fullWidth / 3
+        },
+        animationSpec = tween(ANIMATION_DURATION)
+    )
+}
+
+private fun backEnter(): EnterTransition {
+    return fadeIn(
+        animationSpec = tween(ANIMATION_DURATION)
+    ) + slideInHorizontally(
+        initialOffsetX = { fullWidth ->
+            -fullWidth / 3
+        },
+        animationSpec = tween(ANIMATION_DURATION)
+    )
+}
+
+private fun backExit(): ExitTransition {
+    return fadeOut(
+        animationSpec = tween(ANIMATION_DURATION)
+    ) + slideOutHorizontally(
+        targetOffsetX = { fullWidth ->
+            fullWidth / 3
+        },
+        animationSpec = tween(ANIMATION_DURATION)
+    )
+}
+
 @Composable
-fun AppNavigation() {
-
+fun AppNavigation(
+    authViewModel: AuthViewModel = viewModel()
+) {
     val navController = rememberNavController()
-
-    val authViewModel: AuthViewModel = viewModel()
-
-    val authState by authViewModel.authState
-        .collectAsStateWithLifecycle()
-
-    var checkedStoredLogin by remember {
-        mutableStateOf(false)
-    }
-
-    LaunchedEffect(Unit) {
-        authViewModel.checkStoredLogin()
-        checkedStoredLogin = true
-    }
-
-    if (!checkedStoredLogin ||
-        authState is AuthState.Loading
-    ) {
-
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-
-        return
-    }
-
-    val startDestination =
-        when (authState) {
-            is AuthState.AutoLoginSuccess ->
-                "dashboard"
-
-            else ->
-                "login"
-        }
 
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = "dashboard",
+
+        enterTransition = {
+            forwardEnter()
+        },
+
+        exitTransition = {
+            forwardExit()
+        },
+
+        popEnterTransition = {
+            backEnter()
+        },
+
+        popExitTransition = {
+            backExit()
+        }
     ) {
 
         composable("login") {
-
             LoginScreen(
+                authViewModel = authViewModel,
                 onLoginSuccess = {
                     navController.navigate("dashboard") {
                         popUpTo("login") {
@@ -91,16 +119,15 @@ fun AppNavigation() {
                 },
                 onRegisterClick = {
                     navController.navigate("register")
-                },
-                authViewModel = authViewModel
+                }
             )
         }
 
         composable("register") {
-
             RegisterScreen(
+                authViewModel = authViewModel,
                 onRegisterSuccess = {
-                    navController.navigate("login") {
+                    navController.navigate("dashboard") {
                         popUpTo("register") {
                             inclusive = true
                         }
@@ -108,20 +135,17 @@ fun AppNavigation() {
                 },
                 onLoginClick = {
                     navController.popBackStack()
-                },
-                authViewModel = authViewModel
+                }
             )
         }
 
         composable("dashboard") {
-
             DashboardScreen(
                 navController = navController
             )
         }
 
         composable("trips") {
-
             TripsScreen(
                 onTripClick = { tripId ->
                     navController.navigate(
@@ -141,17 +165,11 @@ fun AppNavigation() {
         ) { backStackEntry ->
 
             val tripId =
-                backStackEntry.arguments
-                    ?.getInt("tripId")
+                backStackEntry.arguments?.getInt("tripId")
 
             if (tripId == null) {
-
-                Text(
-                    text = "Trip not found"
-                )
-
+                Text("Trip not found")
             } else {
-
                 TripDetailRoute(
                     tripId = tripId,
                     onExpensesClick = {
@@ -173,29 +191,46 @@ fun AppNavigation() {
         ) { backStackEntry ->
 
             val tripId =
-                backStackEntry.arguments
-                    ?.getInt("tripId")
+                backStackEntry.arguments?.getInt("tripId")
 
             if (tripId == null) {
-
-                Text(
-                    text = "Trip not found"
-                )
-
+                Text("Trip not found")
             } else {
-
                 TripExpensesRoute(
+                    tripId = tripId,
+                    onAnalyticsClick = {
+                        navController.navigate(
+                            "expenseAnalytics/$tripId"
+                        )
+                    }
+                )
+            }
+        }
+
+        composable(
+            route = "expenseAnalytics/{tripId}",
+            arguments = listOf(
+                navArgument("tripId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+
+            val tripId =
+                backStackEntry.arguments?.getInt("tripId")
+
+            if (tripId == null) {
+                Text("Trip not found")
+            } else {
+                ExpenseAnalyticsScreen(
                     tripId = tripId
                 )
             }
         }
 
         composable("profile") {
-
             ProfileScreen(
                 onLogout = {
-                    authViewModel.logout()
-
                     navController.navigate("login") {
                         popUpTo(0) {
                             inclusive = true
@@ -206,7 +241,6 @@ fun AppNavigation() {
         }
     }
 }
-
 
 @Composable
 private fun TripDetailRoute(
@@ -223,77 +257,47 @@ private fun TripDetailRoute(
         mutableStateOf(true)
     }
 
-    var errorMessage by remember {
-        mutableStateOf<String?>(null)
-    }
-
     LaunchedEffect(tripId) {
-
         isLoading = true
-        errorMessage = null
 
-        val result =
-            tripViewModel.getTrip(tripId)
-
-        result
-            .onSuccess {
-                trip = it
-            }
-            .onFailure {
-                errorMessage =
-                    it.message ?: "Failed to load trip"
+        tripViewModel
+            .getTrip(tripId)
+            .onSuccess { loadedTrip ->
+                trip = loadedTrip
             }
 
         isLoading = false
     }
 
-    when {
+    if (isLoading) {
 
-        isLoading -> {
+        CircularProgressIndicator()
 
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        }
+    } else if (trip == null) {
 
-        trip != null -> {
+        Text("Trip not found")
 
-            TripDetailScreen(
-                trip = trip!!,
-                tripViewModel = tripViewModel,
-                onExpensesClick = onExpensesClick
-            )
-        }
+    } else {
 
-        else -> {
-
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text =
-                        errorMessage
-                            ?: "Trip not found"
-                )
-            }
-        }
+        TripDetailScreen(
+            trip = trip!!,
+            tripViewModel = tripViewModel,
+            onExpensesClick = onExpensesClick
+        )
     }
 }
 
-
 @Composable
 private fun TripExpensesRoute(
-    tripId: Int
+    tripId: Int,
+    onAnalyticsClick: () -> Unit
 ) {
     val tripExpenseViewModel: TripExpenseViewModel =
         viewModel()
 
     ExpensesScreen(
         tripId = tripId,
-        tripExpenseViewModel = tripExpenseViewModel
+        tripExpenseViewModel = tripExpenseViewModel,
+        onAnalyticsClick = onAnalyticsClick
     )
 }

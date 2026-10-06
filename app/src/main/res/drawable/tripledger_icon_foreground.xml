@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Mountain -->
+    <path
+        android:fillColor="@color/tripledger_dark_teal"
+        android:pathData="
+            M18,72
+            L40,40
+            L53,55
+            L68,34
+            L91,72
+            Z" />
+
+    <!-- Mountain snow/highlight -->
+    <path
+        android:fillColor="#F7FBFA"
+        android:pathData="
+            M40,40
+            L53,55
+            L46,50
+            Z" />
+
+    <path
+        android:fillColor="#F7FBFA"
+        android:pathData="
+            M68,34
+            L78,50
+            L70,44
+            Z" />
+
+    <!-- Travel path -->
+    <path
+        android:fillColor="#F7FBFA"
+        android:pathData="
+            M25,78
+            C39,69 52,82 63,70
+            C72,60 78,54 80,43
+            L84,45
+            C81,58 74,67 66,75
+            C53,89 38,77 25,83
+            Z" />
+
+    <!-- Location pin -->
+    <path
+        android:fillColor="#F28C28"
+        android:pathData="
+            M80,35
+            C80,29 85,24 91,24
+            C97,24 102,29 102,35
+            C102,43 91,52 91,52
+            C91,52 80,43 80,35
+            Z" />
+
+    <!-- Pin center -->
+    <path
+        android:fillColor="#F7FBFA"
+        android:pathData="
+            M87,35
+            A4,4 0,1 0,95,35
+            A4,4 0,1 0,87,35" />
+
+</vector>
