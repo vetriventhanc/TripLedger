@@ -128,6 +128,27 @@ fun TripDetailScreen(
         mutableStateOf("")
     }
 
+    var memoryFilter by remember {
+        mutableStateOf("All")
+    }
+
+    val filteredPhotos = remember(
+        photos,
+        memoryFilter
+    ) {
+        when (memoryFilter) {
+            "Date" -> photos.filter {
+                !it.memory_date.isNullOrBlank()
+            }
+
+            "Caption" -> photos.filter {
+                !it.caption.isNullOrBlank()
+            }
+
+            else -> photos
+        }
+    }
+
     var isUploadingMemory by remember {
         mutableStateOf(false)
     }
@@ -499,6 +520,51 @@ fun TripDetailScreen(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+
+                if (photos.isNotEmpty()) {
+
+                    Text(
+                        text = "Filter memories",
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement =
+                            Arrangement.spacedBy(8.dp)
+                    ) {
+
+                        listOf(
+                            "All",
+                            "Date",
+                            "Caption"
+                        ).forEach { filter ->
+
+                            if (memoryFilter == filter) {
+                                Button(
+                                    onClick = {
+                                        memoryFilter = filter
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = MaterialTheme.shapes.large
+                                ) {
+                                    Text(filter)
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = {
+                                        memoryFilter = filter
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    shape = MaterialTheme.shapes.large
+                                ) {
+                                    Text(filter)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -564,6 +630,55 @@ fun TripDetailScreen(
                 }
             )
 
+        } else if (filteredPhotos.isEmpty()) {
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor =
+                        MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement =
+                        Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "No matching memories",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text =
+                            when (memoryFilter) {
+                                "Date" ->
+                                    "No memories have a memory date yet."
+                                "Caption" ->
+                                    "No memories have a caption yet."
+                                else ->
+                                    "No memories match this filter."
+                            },
+                        color =
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedButton(
+                        onClick = {
+                            memoryFilter = "All"
+                        },
+                        shape = MaterialTheme.shapes.large
+                    ) {
+                        Text("Show All")
+                    }
+                }
+            }
+
         } else {
 
             Column(
@@ -572,7 +687,7 @@ fun TripDetailScreen(
                     Arrangement.spacedBy(10.dp)
             ) {
 
-                photos
+                filteredPhotos
                     .chunked(2)
                     .forEach { rowPhotos ->
 
