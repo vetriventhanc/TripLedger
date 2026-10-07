@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Timeline
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -95,6 +96,14 @@ fun TripDetailScreen(
 
     var tripOverview by remember {
         mutableStateOf<TripOverviewResponse?>(null)
+    }
+
+    var tripExpenseAnalytics by remember {
+        mutableStateOf<com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?>(null)
+    }
+
+    var placesCount by remember {
+        mutableStateOf(0)
     }
 
     var isLoading by remember {
@@ -240,6 +249,18 @@ fun TripDetailScreen(
             .getTripOverview(trip.id)
             .onSuccess { overview ->
                 tripOverview = overview
+            }
+
+        tripViewModel
+            .getExpenseAnalytics(trip.id)
+            .onSuccess { analytics ->
+                tripExpenseAnalytics = analytics
+            }
+
+        tripViewModel
+            .getTripPlaces(trip.id)
+            .onSuccess { places ->
+                placesCount = places.size
             }
 
         isLoading = false
@@ -436,6 +457,31 @@ fun TripDetailScreen(
                     )
                 }
             }
+        }
+
+        AnimatedVisibility(
+            visible = showContent,
+            enter =
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 450,
+                        delayMillis = 160
+                    )
+                ) +
+                        slideInVertically(
+                            initialOffsetY = { 30 },
+                            animationSpec = tween(
+                                durationMillis = 450,
+                                delayMillis = 160
+                            )
+                        )
+        ) {
+
+            TripInsightsCard(
+                overview = tripOverview,
+                analytics = tripExpenseAnalytics,
+                placesCount = placesCount
+            )
         }
 
         AnimatedVisibility(
@@ -978,6 +1024,150 @@ fun TripDetailScreen(
                 }
             }
         )
+    }
+}
+
+@Composable
+private fun TripInsightsCard(
+    overview: TripOverviewResponse?,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    placesCount: Int
+) {
+    val durationDays = overview?.duration_days ?: 0
+    val totalExpenses = analytics?.total_expenses
+        ?: overview?.total_expenses
+        ?: 0.0
+    val averageDailySpend =
+        if (durationDays > 0) {
+            totalExpenses / durationDays
+        } else {
+            0.0
+        }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.TrendingUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Text(
+                    text = "Trip Insights",
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Text(
+                text = "A quick summary of how this journey is going.",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = "₹${"%.2f".format(averageDailySpend)}",
+                    label = "Avg / Day",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = "${analytics?.expense_count ?: 0}",
+                    label = "Expenses",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = "$placesCount",
+                    label = "Places",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            if (analytics != null && analytics.categories.isNotEmpty()) {
+                val topCategory =
+                    analytics.categories.maxByOrNull { it.total }
+
+                if (topCategory != null) {
+                    Text(
+                        text = "Top spending category: ${topCategory.category} · ₹${"%.2f".format(topCategory.total)}",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripInsightStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    horizontal = 8.dp,
+                    vertical = 12.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                    alpha = 0.75f
+                )
+            )
+        }
     }
 }
 
