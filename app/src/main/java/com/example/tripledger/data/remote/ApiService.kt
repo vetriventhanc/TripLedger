@@ -78,7 +78,8 @@ interface ApiService {
         @Header("Authorization") authorization: String,
         @Path("tripId") tripId: Int,
         @Part photo: MultipartBody.Part,
-        @Part("caption") caption: RequestBody?
+        @Part("caption") caption: RequestBody?,
+        @Part("memory_date") memoryDate: RequestBody?
     ): Response<TripPhotoResponse>
 
     @Multipart

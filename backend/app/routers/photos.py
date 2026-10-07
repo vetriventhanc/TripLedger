@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 from pathlib import Path
 
 from fastapi import (
@@ -44,6 +45,7 @@ async def upload_trip_photo(
     trip_id: int,
     photo: UploadFile = File(...),
     caption: str | None = Form(None),
+    memory_date: date | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -106,6 +108,7 @@ async def upload_trip_photo(
         trip_id=trip_id,
         photo_url=photo_url,
         caption=cleaned_caption or None,
+        memory_date=memory_date,
     )
 
     db.add(new_photo)

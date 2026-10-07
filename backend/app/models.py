@@ -116,6 +116,11 @@ class TripPhoto(Base):
         nullable=True,
     )
 
+    memory_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,

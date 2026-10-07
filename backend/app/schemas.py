@@ -54,6 +54,7 @@ class TripPhotoResponse(BaseModel):
     trip_id: int
     photo_url: str
     caption: str | None
+    memory_date: date | None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

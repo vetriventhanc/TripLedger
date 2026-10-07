@@ -124,6 +124,10 @@ fun TripDetailScreen(
         mutableStateOf("")
     }
 
+    var memoryDate by remember {
+        mutableStateOf("")
+    }
+
     var isUploadingMemory by remember {
         mutableStateOf(false)
     }
@@ -196,6 +200,7 @@ fun TripDetailScreen(
 
             pendingMemoryUri = uri
             memoryCaption = ""
+            memoryDate = ""
         }
 
 
@@ -647,6 +652,7 @@ fun TripDetailScreen(
                 if (!isUploadingMemory) {
                     pendingMemoryUri = null
                     memoryCaption = ""
+                    memoryDate = ""
                 }
             },
             title = {
@@ -689,6 +695,27 @@ fun TripDetailScreen(
                         maxLines = 4,
                         enabled = !isUploadingMemory
                     )
+
+                    OutlinedTextField(
+                        value = memoryDate,
+                        onValueChange = {
+                            if (it.length <= 10) {
+                                memoryDate = it
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Memory Date")
+                        },
+                        placeholder = {
+                            Text("YYYY-MM-DD")
+                        },
+                        supportingText = {
+                            Text("Optional • YYYY-MM-DD")
+                        },
+                        singleLine = true,
+                        enabled = !isUploadingMemory
+                    )
                 }
             },
             confirmButton = {
@@ -717,11 +744,26 @@ fun TripDetailScreen(
                                 memoryCaption.trim()
                                     .takeIf { it.isNotEmpty() }
 
+                            val enteredMemoryDate =
+                                memoryDate.trim()
+                                    .takeIf { it.isNotEmpty() }
+
+                            if (
+                                enteredMemoryDate != null &&
+                                !Regex("\\d{4}-\\d{2}-\\d{2}")
+                                    .matches(enteredMemoryDate)
+                            ) {
+                                isUploadingMemory = false
+                                message = "Memory date must use YYYY-MM-DD"
+                                return@launch
+                            }
+
                             val result =
                                 tripViewModel.uploadTripPhoto(
                                     tripId = trip.id,
                                     photo = photoPart,
-                                    caption = caption
+                                    caption = caption,
+                                    memoryDate = enteredMemoryDate
                                 )
 
                             result
@@ -771,6 +813,7 @@ fun TripDetailScreen(
                         if (!isUploadingMemory) {
                             pendingMemoryUri = null
                             memoryCaption = ""
+                            memoryDate = ""
                         }
                     },
                     enabled = !isUploadingMemory
@@ -1647,7 +1690,10 @@ private fun MemoryPhotoViewer(
                 )
             }
 
-            if (!photo.caption.isNullOrBlank()) {
+            if (
+                !photo.caption.isNullOrBlank() ||
+                !photo.memory_date.isNullOrBlank()
+            ) {
                 Card(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -1663,11 +1709,27 @@ private fun MemoryPhotoViewer(
                             )
                     )
                 ) {
-                    Text(
-                        text = photo.caption!!,
+                    Column(
                         modifier = Modifier.padding(12.dp),
-                        fontWeight = FontWeight.SemiBold
-                    )
+                        verticalArrangement =
+                            Arrangement.spacedBy(4.dp)
+                    ) {
+                        photo.memory_date?.let { date ->
+                            Text(
+                                text = "Memory date: $date",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+
+                        photo.caption?.let { caption ->
+                            if (caption.isNotBlank()) {
+                                Text(
+                                    text = caption,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -1778,12 +1840,25 @@ private fun TripMemoryItem(
                         ContentScale.Crop
                 )
 
+                if (!photo.memory_date.isNullOrBlank()) {
+                    Text(
+                        text = "📅 ${photo.memory_date}",
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 8.dp
+                        ),
+                        fontWeight = FontWeight.Medium,
+                        color =
+                            MaterialTheme.colorScheme.primary
+                    )
+                }
+
                 if (!photo.caption.isNullOrBlank()) {
                     Text(
                         text = photo.caption!!,
                         modifier = Modifier.padding(
                             horizontal = 12.dp,
-                            vertical = 8.dp
+                            vertical = 4.dp
                         ),
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2

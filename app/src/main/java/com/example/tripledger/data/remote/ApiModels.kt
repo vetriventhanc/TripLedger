@@ -47,6 +47,7 @@ data class TripPhotoResponse(
     val trip_id: Int,
     val photo_url: String,
     val caption: String?,
+    val memory_date: String?,
     val created_at: String
 )
 

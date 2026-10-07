@@ -203,7 +203,8 @@ class TripRepository(
         token: String,
         tripId: Int,
         photo: MultipartBody.Part,
-        caption: String? = null
+        caption: String? = null,
+        memoryDate: String? = null
     ): Result<TripPhotoResponse> {
         return try {
             val response = apiService.uploadTripPhoto(
@@ -211,6 +212,10 @@ class TripRepository(
                 tripId = tripId,
                 photo = photo,
                 caption = caption
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.toRequestBody(),
+                memoryDate = memoryDate
                     ?.trim()
                     ?.takeIf { it.isNotEmpty() }
                     ?.toRequestBody()

@@ -402,7 +402,8 @@ class TripViewModel(
     suspend fun uploadTripPhoto(
         tripId: Int,
         photo: MultipartBody.Part,
-        caption: String? = null
+        caption: String? = null,
+        memoryDate: String? = null
     ) = run {
         val token = tokenManager.token.first()
 
@@ -415,7 +416,8 @@ class TripViewModel(
                 token = token,
                 tripId = tripId,
                 photo = photo,
-                caption = caption
+                caption = caption,
+                memoryDate = memoryDate
             )
         }
     }
