@@ -47,6 +47,12 @@ import com.example.tripledger.viewmodel.TripViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.material.icons.filled.AutoGraph
 
 
 @Composable
@@ -309,6 +315,10 @@ private fun AnalyticsContent(
             analytics = analytics
         )
 
+        AnalyticsInsightsCard(
+            analytics = analytics
+        )
+
         CategoryBreakdownCard(
             analytics = analytics
         )
@@ -386,6 +396,120 @@ private fun AnalyticsSummaryCards(
     }
 }
 
+
+@Composable
+private fun AnalyticsInsightsCard(
+    analytics: TripExpenseAnalyticsResponse
+) {
+    val topCategory = analytics.categories.maxByOrNull { it.total }
+
+    val highestSpendingDay = analytics.daily_spending.maxByOrNull { it.total }
+
+    val categoryCount = analytics.categories.size
+
+    val categoryAverage =
+        if (categoryCount > 0) {
+            analytics.total_expenses / categoryCount
+        } else {
+            0.0
+        }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AutoGraph,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Text(
+                    text = "Spending Insights",
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            InsightRow(
+                label = "Top category",
+                value = topCategory?.category ?: "No data"
+            )
+
+            InsightRow(
+                label = "Top category spending",
+                value = topCategory?.let {
+                    "₹${String.format(Locale.US, "%.2f", it.total)}"
+                } ?: "₹0.00"
+            )
+
+            InsightRow(
+                label = "Highest spending day",
+                value = highestSpendingDay?.date ?: "No data"
+            )
+
+            InsightRow(
+                label = "Highest daily spending",
+                value = highestSpendingDay?.let {
+                    "₹${String.format(Locale.US, "%.2f", it.total)}"
+                } ?: "₹0.00"
+            )
+
+            InsightRow(
+                label = "Categories used",
+                value = categoryCount.toString()
+            )
+
+            InsightRow(
+                label = "Average per category",
+                value = "₹${String.format(Locale.US, "%.2f", categoryAverage)}"
+            )
+        }
+    }
+}
+
+@Composable
+private fun InsightRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+            fontSize = 14.sp
+        )
+
+        Text(
+            text = value,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            textAlign = TextAlign.End
+        )
+    }
+}
 
 @Composable
 private fun AnalyticsStatCard(
@@ -595,25 +719,20 @@ private fun CategoryRow(
                 Alignment.CenterVertically
         ) {
 
-            Card(
-                modifier = Modifier.weight(1f),
-                shape = MaterialTheme.shapes.small,
-                colors = CardDefaults.cardColors(
-                    containerColor =
-                        MaterialTheme
-                            .colorScheme
-                            .secondaryContainer
-                ),
-                elevation =
-                    CardDefaults.cardElevation(
-                        defaultElevation = 0.dp
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(7.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(
+                        MaterialTheme.colorScheme.secondaryContainer
                     )
             ) {
-
-                Spacer(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(7.dp)
+                        .fillMaxWidth((percentage / 100.0).toFloat().coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .background(MaterialTheme.colorScheme.primary)
                 )
             }
 
