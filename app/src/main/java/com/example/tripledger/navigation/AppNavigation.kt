@@ -28,6 +28,7 @@ import com.example.tripledger.ui.screens.dashboard.DashboardScreen
 import com.example.tripledger.ui.screens.expenseanalytics.ExpenseAnalyticsScreen
 import com.example.tripledger.ui.screens.expenses.ExpensesScreen
 import com.example.tripledger.ui.screens.profile.ProfileScreen
+import com.example.tripledger.ui.screens.timeline.TripTimelineScreen
 import com.example.tripledger.ui.screens.tripdetail.TripDetailScreen
 import com.example.tripledger.ui.screens.trips.TripsScreen
 import com.example.tripledger.viewmodel.AuthViewModel
@@ -176,6 +177,11 @@ fun AppNavigation(
                         navController.navigate(
                             "expenses/$tripId"
                         )
+                    },
+                    onTimelineClick = {
+                        navController.navigate(
+                            "tripTimeline/$tripId"
+                        )
                     }
                 )
             }
@@ -228,6 +234,27 @@ fun AppNavigation(
             }
         }
 
+        composable(
+            route = "tripTimeline/{tripId}",
+            arguments = listOf(
+                navArgument("tripId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+
+            val tripId =
+                backStackEntry.arguments?.getInt("tripId")
+
+            if (tripId == null) {
+                Text("Trip not found")
+            } else {
+                TripTimelineScreen(
+                    tripId = tripId
+                )
+            }
+        }
+
         composable("profile") {
             ProfileScreen(
                 onLogout = {
@@ -245,7 +272,8 @@ fun AppNavigation(
 @Composable
 private fun TripDetailRoute(
     tripId: Int,
-    onExpensesClick: () -> Unit
+    onExpensesClick: () -> Unit,
+    onTimelineClick: () -> Unit
 ) {
     val tripViewModel: TripViewModel = viewModel()
 
@@ -278,15 +306,18 @@ private fun TripDetailRoute(
         Text("Trip not found")
 
     } else {
+        val currentTrip = trip
 
-        TripDetailScreen(
-            trip = trip!!,
-            tripViewModel = tripViewModel,
-            onExpensesClick = onExpensesClick
-        )
+        if (currentTrip != null) {
+            TripDetailScreen(
+                trip = currentTrip,
+                onExpensesClick = onExpensesClick,
+                onTimelineClick = onTimelineClick
+            )
+        }
     }
-}
 
+}
 @Composable
 private fun TripExpensesRoute(
     tripId: Int,

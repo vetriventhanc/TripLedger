@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -78,7 +79,8 @@ private const val API_BASE_URL = "http://10.0.2.2:8000"
 fun TripDetailScreen(
     trip: TripResponse,
     tripViewModel: TripViewModel = viewModel(),
-    onExpensesClick: () -> Unit
+    onExpensesClick: () -> Unit,
+    onTimelineClick: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -341,6 +343,24 @@ fun TripDetailScreen(
 
                     Text(
                         text = " Expenses",
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = onTimelineClick,
+                    modifier = Modifier.weight(1f),
+                    shape = MaterialTheme.shapes.large
+                ) {
+
+                    Icon(
+                        imageVector = Icons.Default.Timeline,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+
+                    Text(
+                        text = " Timeline",
                         fontWeight = FontWeight.SemiBold
                     )
                 }
