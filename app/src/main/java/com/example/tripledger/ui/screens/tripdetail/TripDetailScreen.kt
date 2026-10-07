@@ -13,23 +13,24 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
@@ -62,6 +63,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
@@ -80,7 +83,8 @@ fun TripDetailScreen(
     trip: TripResponse,
     tripViewModel: TripViewModel = viewModel(),
     onExpensesClick: () -> Unit,
-    onTimelineClick: () -> Unit
+    onTimelineClick: () -> Unit,
+    onPlacesClick: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -107,6 +111,9 @@ fun TripDetailScreen(
 
     var showEditDialog by remember {
         mutableStateOf(false)
+    }
+    var selectedMemory by remember {
+        mutableStateOf<TripPhotoResponse?>(null)
     }
 
     var showContent by remember {
@@ -245,6 +252,9 @@ fun TripDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(
+                rememberScrollState()
+            )
             .padding(
                 horizontal = 20.dp,
                 vertical = 16.dp
@@ -302,67 +312,99 @@ fun TripDetailScreen(
                         )
         ) {
 
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement =
+                verticalArrangement =
                     Arrangement.spacedBy(10.dp)
             ) {
 
-                OutlinedButton(
-                    onClick = {
-                        showEditDialog = true
-                    },
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.large
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(10.dp)
                 ) {
 
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    OutlinedButton(
+                        onClick = {
+                            showEditDialog = true
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.large
+                    ) {
 
-                    Text(
-                        text = " Edit",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+
+                        Text(
+                            text = " Edit",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Button(
+                        onClick = onExpensesClick,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.large
+                    ) {
+
+                        Icon(
+                            imageVector =
+                                Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+
+                        Text(
+                            text = " Expenses",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
 
-                Button(
-                    onClick = onExpensesClick,
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.large
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement =
+                        Arrangement.spacedBy(10.dp)
                 ) {
 
-                    Icon(
-                        imageVector =
-                            Icons.Default.AccountBalanceWallet,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    OutlinedButton(
+                        onClick = onTimelineClick,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.large
+                    ) {
 
-                    Text(
-                        text = " Expenses",
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+                        Icon(
+                            imageVector = Icons.Default.Timeline,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
 
-                OutlinedButton(
-                    onClick = onTimelineClick,
-                    modifier = Modifier.weight(1f),
-                    shape = MaterialTheme.shapes.large
-                ) {
+                        Text(
+                            text = " Timeline",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
 
-                    Icon(
-                        imageVector = Icons.Default.Timeline,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
+                    OutlinedButton(
+                        onClick = onPlacesClick,
+                        modifier = Modifier.weight(1f),
+                        shape = MaterialTheme.shapes.large
+                    ) {
 
-                    Text(
-                        text = " Timeline",
-                        fontWeight = FontWeight.SemiBold
-                    )
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+
+                        Text(
+                            text = " Places",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -545,49 +587,83 @@ fun TripDetailScreen(
 
         } else {
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    top = 4.dp,
-                    bottom = 100.dp
-                ),
-                horizontalArrangement =
-                    Arrangement.spacedBy(10.dp),
+            Column(
+                modifier = Modifier.fillMaxWidth(),
                 verticalArrangement =
                     Arrangement.spacedBy(10.dp)
             ) {
 
-                items(
-                    items = photos,
-                    key = { photo ->
-                        photo.id
-                    }
-                ) { photo ->
+                photos
+                    .chunked(2)
+                    .forEach { rowPhotos ->
 
-                    TripMemoryItem(
-                        photo = photo,
-                        tripViewModel = tripViewModel,
-                        onDeleted = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement =
+                                Arrangement.spacedBy(10.dp)
+                        ) {
 
-                            photos =
-                                photos.filter {
-                                    it.id != photo.id
+                            rowPhotos.forEach { photo ->
+
+                                Box(
+                                    modifier = Modifier.weight(1f)
+                                ) {
+
+                                    TripMemoryItem(
+                                        photo = photo,
+                                        tripViewModel = tripViewModel,
+                                        onPhotoClick = {
+                                            selectedMemory = photo
+                                        },
+                                        onDeleted = {
+
+                                            photos =
+                                                photos.filter {
+                                                    it.id != photo.id
+                                                }
+
+                                            tripOverview =
+                                                tripOverview?.copy(
+                                                    memory_count =
+                                                        photos.size
+                                                )
+
+                                            message =
+                                                "Memory photo deleted"
+                                        }
+                                    )
                                 }
+                            }
 
-                            tripOverview =
-                                tripOverview?.copy(
-                                    memory_count =
-                                        photos.size
+                            if (rowPhotos.size == 1) {
+
+                                Spacer(
+                                    modifier =
+                                        Modifier.weight(1f)
                                 )
-
-                            message =
-                                "Memory photo deleted"
+                            }
                         }
-                    )
-                }
+                    }
             }
         }
+    }
+
+    selectedMemory?.let { photo ->
+        MemoryPhotoViewer(
+            photo = photo,
+            tripViewModel = tripViewModel,
+            onDismiss = {
+                selectedMemory = null
+            },
+            onDeleted = {
+                photos = photos.filter { it.id != photo.id }
+                tripOverview = tripOverview?.copy(
+                    memory_count = photos.size
+                )
+                selectedMemory = null
+                message = "Memory photo deleted"
+            }
+        )
     }
 
     if (showEditDialog) {
@@ -1404,10 +1480,96 @@ private fun EditTripDialog(
     )
 }
 
+
+@Composable
+private fun MemoryPhotoViewer(
+    photo: TripPhotoResponse,
+    tripViewModel: TripViewModel,
+    onDismiss: () -> Unit,
+    onDeleted: () -> Unit
+) {
+    val scope = rememberCoroutineScope()
+    var deleting by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = {
+            if (!deleting) onDismiss()
+        },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = !deleting,
+            dismissOnClickOutside = !deleting
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim)
+        ) {
+            AsyncImage(
+                model = "$API_BASE_URL${photo.photo_url}",
+                contentDescription = "Trip memory",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center),
+                contentScale = ContentScale.Fit
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                enabled = !deleting,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                        MaterialTheme.shapes.large
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Close photo"
+                )
+            }
+
+            IconButton(
+                onClick = {
+                    if (deleting) return@IconButton
+                    deleting = true
+                    scope.launch {
+                        tripViewModel.deleteTripPhoto(photo.id)
+                            .onSuccess { onDeleted() }
+                            .onFailure { deleting = false }
+                    }
+                },
+                enabled = !deleting,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .background(
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.95f),
+                        MaterialTheme.shapes.large
+                    )
+            ) {
+                if (deleting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete memory",
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun TripMemoryItem(
     photo: TripPhotoResponse,
     tripViewModel: TripViewModel,
+    onPhotoClick: () -> Unit,
     onDeleted: () -> Unit
 ) {
 
@@ -1452,6 +1614,7 @@ private fun TripMemoryItem(
             "$API_BASE_URL${photo.photo_url}"
 
         Card(
+            onClick = onPhotoClick,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.extraLarge,
             elevation =

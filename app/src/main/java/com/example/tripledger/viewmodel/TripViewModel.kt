@@ -8,6 +8,8 @@ import com.example.tripledger.data.remote.ApiService
 import com.example.tripledger.data.remote.TripCreateRequest
 import com.example.tripledger.data.remote.TripExpenseAnalyticsResponse
 import com.example.tripledger.data.remote.TripOverviewResponse
+import com.example.tripledger.data.remote.TripPlaceCreateRequest
+import com.example.tripledger.data.remote.TripPlaceResponse
 import com.example.tripledger.data.remote.TripResponse
 import com.example.tripledger.data.remote.TripTimelineResponse
 import com.example.tripledger.data.repository.TripRepository
@@ -303,6 +305,96 @@ class TripViewModel(
         return repository.getExpenseAnalytics(
             token = token,
             tripId = tripId
+        )
+    }
+
+
+    suspend fun createPlace(
+        tripId: Int,
+        name: String,
+        location: String,
+        visitDate: String,
+        notes: String?,
+        photoUrl: String? = null
+    ): Result<TripPlaceResponse> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        val request = TripPlaceCreateRequest(
+            name = name,
+            location = location,
+            visit_date = visitDate,
+            notes = notes,
+            photo_url = photoUrl
+        )
+
+        return repository.createPlace(
+            token = token,
+            tripId = tripId,
+            request = request
+        )
+    }
+
+
+    suspend fun getTripPlaces(
+        tripId: Int
+    ): Result<List<TripPlaceResponse>> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        return repository.getTripPlaces(
+            token = token,
+            tripId = tripId
+        )
+    }
+
+
+    suspend fun getPlace(
+        tripId: Int,
+        placeId: Int
+    ): Result<TripPlaceResponse> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        return repository.getPlace(
+            token = token,
+            tripId = tripId,
+            placeId = placeId
+        )
+    }
+
+
+    suspend fun deletePlace(
+        tripId: Int,
+        placeId: Int
+    ): Result<Unit> {
+        val token = tokenManager.token.first()
+
+        if (token.isNullOrBlank()) {
+            return Result.failure(
+                Exception("You are not logged in")
+            )
+        }
+
+        return repository.deletePlace(
+            token = token,
+            tripId = tripId,
+            placeId = placeId
         )
     }
 

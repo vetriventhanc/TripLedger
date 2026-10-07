@@ -28,6 +28,7 @@ import com.example.tripledger.ui.screens.dashboard.DashboardScreen
 import com.example.tripledger.ui.screens.expenseanalytics.ExpenseAnalyticsScreen
 import com.example.tripledger.ui.screens.expenses.ExpensesScreen
 import com.example.tripledger.ui.screens.profile.ProfileScreen
+import com.example.tripledger.ui.screens.places.TripPlacesScreen
 import com.example.tripledger.ui.screens.timeline.TripTimelineScreen
 import com.example.tripledger.ui.screens.tripdetail.TripDetailScreen
 import com.example.tripledger.ui.screens.trips.TripsScreen
@@ -182,6 +183,11 @@ fun AppNavigation(
                         navController.navigate(
                             "tripTimeline/$tripId"
                         )
+                    },
+                    onPlacesClick = {
+                        navController.navigate(
+                            "tripPlaces/$tripId"
+                        )
                     }
                 )
             }
@@ -255,6 +261,27 @@ fun AppNavigation(
             }
         }
 
+        composable(
+            route = "tripPlaces/{tripId}",
+            arguments = listOf(
+                navArgument("tripId") {
+                    type = NavType.IntType
+                }
+            )
+        ) { backStackEntry ->
+
+            val tripId =
+                backStackEntry.arguments?.getInt("tripId")
+
+            if (tripId == null) {
+                Text("Trip not found")
+            } else {
+                TripPlacesScreen(
+                    tripId = tripId
+                )
+            }
+        }
+
         composable("profile") {
             ProfileScreen(
                 onLogout = {
@@ -273,7 +300,8 @@ fun AppNavigation(
 private fun TripDetailRoute(
     tripId: Int,
     onExpensesClick: () -> Unit,
-    onTimelineClick: () -> Unit
+    onTimelineClick: () -> Unit,
+    onPlacesClick: () -> Unit
 ) {
     val tripViewModel: TripViewModel = viewModel()
 
@@ -312,7 +340,8 @@ private fun TripDetailRoute(
             TripDetailScreen(
                 trip = currentTrip,
                 onExpensesClick = onExpensesClick,
-                onTimelineClick = onTimelineClick
+                onTimelineClick = onTimelineClick,
+                onPlacesClick = onPlacesClick
             )
         }
     }

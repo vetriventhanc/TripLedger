@@ -119,3 +119,27 @@ data class TripTimelineResponse(
     val destination: String,
     val events: List<TripTimelineEvent>
 )
+
+
+// ---------------------------------------------------------
+// Trip Places
+// ---------------------------------------------------------
+
+data class TripPlaceCreateRequest(
+    val name: String,
+    val location: String,
+    val visit_date: String,
+    val notes: String?,
+    val photo_url: String?
+)
+
+data class TripPlaceResponse(
+    val id: Int,
+    val trip_id: Int,
+    val name: String,
+    val location: String,
+    val visit_date: String,
+    val notes: String?,
+    val photo_url: String?,
+    val created_at: String
+)

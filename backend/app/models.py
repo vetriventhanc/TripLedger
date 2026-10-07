@@ -167,3 +167,50 @@ class TripExpense(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+
+class TripPlace(Base):
+    __tablename__ = "trip_places"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        index=True,
+    )
+
+    trip_id: Mapped[int] = mapped_column(
+        ForeignKey("trips.id"),
+        nullable=False,
+        index=True,
+    )
+
+    name: Mapped[str] = mapped_column(
+        String(200),
+        nullable=False,
+    )
+
+    location: Mapped[str] = mapped_column(
+        String(300),
+        nullable=False,
+    )
+
+    visit_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
+    notes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    photo_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False,
+    )

@@ -130,4 +130,32 @@ interface ApiService {
         @Header("Authorization") authorization: String,
         @Path("expenseId") expenseId: Int
     ): Response<Unit>
+
+
+    @POST("trips/{tripId}/places")
+    suspend fun createPlace(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int,
+        @Body request: TripPlaceCreateRequest
+    ): Response<TripPlaceResponse>
+
+    @GET("trips/{tripId}/places")
+    suspend fun getTripPlaces(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int
+    ): Response<List<TripPlaceResponse>>
+
+    @GET("trips/{tripId}/places/{placeId}")
+    suspend fun getPlace(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int,
+        @Path("placeId") placeId: Int
+    ): Response<TripPlaceResponse>
+
+    @DELETE("trips/{tripId}/places/{placeId}")
+    suspend fun deletePlace(
+        @Header("Authorization") authorization: String,
+        @Path("tripId") tripId: Int,
+        @Path("placeId") placeId: Int
+    ): Response<Unit>
 }

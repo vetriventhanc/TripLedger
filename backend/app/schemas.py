@@ -107,4 +107,26 @@ class TripOverviewResponse(BaseModel):
     end_date: date
     duration_days: int
     total_expenses: float
+    average_expense: float | None = None
     memory_count: int
+
+
+class TripPlaceCreate(BaseModel):
+    name: str
+    location: str
+    visit_date: date
+    notes: str | None = None
+    photo_url: str | None = None
+
+
+class TripPlaceResponse(BaseModel):
+    id: int
+    trip_id: int
+    name: str
+    location: str
+    visit_date: date
+    notes: str | None
+    photo_url: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

@@ -5,6 +5,8 @@ import com.example.tripledger.data.remote.TripCreateRequest
 import com.example.tripledger.data.remote.TripExpenseAnalyticsResponse
 import com.example.tripledger.data.remote.TripOverviewResponse
 import com.example.tripledger.data.remote.TripPhotoResponse
+import com.example.tripledger.data.remote.TripPlaceCreateRequest
+import com.example.tripledger.data.remote.TripPlaceResponse
 import com.example.tripledger.data.remote.TripResponse
 import com.example.tripledger.data.remote.TripTimelineResponse
 import okhttp3.MultipartBody
@@ -292,6 +294,113 @@ class TripRepository(
                     Exception(
                         response.errorBody()?.string()
                             ?: "Failed to upload cover photo"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+
+    suspend fun createPlace(
+        token: String,
+        tripId: Int,
+        request: TripPlaceCreateRequest
+    ): Result<TripPlaceResponse> {
+        return try {
+            val response = apiService.createPlace(
+                authorization = "Bearer $token",
+                tripId = tripId,
+                request = request
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to create place"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getTripPlaces(
+        token: String,
+        tripId: Int
+    ): Result<List<TripPlaceResponse>> {
+        return try {
+            val response = apiService.getTripPlaces(
+                authorization = "Bearer $token",
+                tripId = tripId
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to load trip places"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getPlace(
+        token: String,
+        tripId: Int,
+        placeId: Int
+    ): Result<TripPlaceResponse> {
+        return try {
+            val response = apiService.getPlace(
+                authorization = "Bearer $token",
+                tripId = tripId,
+                placeId = placeId
+            )
+
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to load place"
+                    )
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deletePlace(
+        token: String,
+        tripId: Int,
+        placeId: Int
+    ): Result<Unit> {
+        return try {
+            val response = apiService.deletePlace(
+                authorization = "Bearer $token",
+                tripId = tripId,
+                placeId = placeId
+            )
+
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(
+                    Exception(
+                        response.errorBody()?.string()
+                            ?: "Failed to delete place"
                     )
                 )
             }
