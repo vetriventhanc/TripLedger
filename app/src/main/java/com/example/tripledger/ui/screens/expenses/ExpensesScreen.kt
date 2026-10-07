@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material3.AlertDialog
@@ -74,6 +76,14 @@ fun ExpensesScreen(
 
     var showContent by remember {
         mutableStateOf(false)
+    }
+
+    var searchQuery by remember {
+        mutableStateOf("")
+    }
+
+    var selectedCategory by remember {
+        mutableStateOf("All")
     }
 
     LaunchedEffect(tripId) {
@@ -160,6 +170,14 @@ fun ExpensesScreen(
                                 tripId = tripId,
                                 expenseId = expenseId
                             )
+                        },
+                        searchQuery = searchQuery,
+                        onSearchQueryChange = {
+                            searchQuery = it
+                        },
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = {
+                            selectedCategory = it
                         }
                     )
                 }
@@ -308,8 +326,55 @@ private fun ExpenseContent(
     expenses: List<TripExpenseResponse>,
     onAddExpense: () -> Unit,
     onAnalyticsClick: () -> Unit,
-    onDelete: (Int) -> Unit
+    onDelete: (Int) -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit
 ) {
+
+    val categories = remember(expenses) {
+        listOf("All") +
+                expenses
+                    .map { it.category.trim() }
+                    .filter { it.isNotBlank() }
+                    .distinct()
+                    .sorted()
+    }
+
+    val filteredExpenses = remember(
+        expenses,
+        searchQuery,
+        selectedCategory
+    ) {
+        val query = searchQuery.trim()
+
+        expenses.filter { expense ->
+            val matchesSearch =
+                query.isBlank() ||
+                        expense.title.contains(
+                            query,
+                            ignoreCase = true
+                        ) ||
+                        expense.category.contains(
+                            query,
+                            ignoreCase = true
+                        ) ||
+                        (expense.notes?.contains(
+                            query,
+                            ignoreCase = true
+                        ) == true)
+
+            val matchesCategory =
+                selectedCategory == "All" ||
+                        expense.category.equals(
+                            selectedCategory,
+                            ignoreCase = true
+                        )
+
+            matchesSearch && matchesCategory
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -331,6 +396,79 @@ private fun ExpenseContent(
             ExpenseSummaryCard(
                 expenses = expenses
             )
+        }
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = {
+                Text("Search expenses")
+            },
+            placeholder = {
+                Text("Title, category, or notes")
+            },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Search expenses"
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotBlank()) {
+                    IconButton(
+                        onClick = {
+                            onSearchQueryChange("")
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Clear search"
+                        )
+                    }
+                }
+            },
+            shape = MaterialTheme.shapes.large
+        )
+
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = androidx.compose.foundation.layout
+                .PaddingValues(horizontal = 2.dp)
+        ) {
+            items(categories) { category ->
+                if (category == selectedCategory) {
+                    Button(
+                        onClick = {
+                            onCategorySelected(category)
+                        },
+                        shape = MaterialTheme.shapes.large,
+                        contentPadding = androidx.compose.foundation.layout
+                            .PaddingValues(
+                                horizontal = 16.dp,
+                                vertical = 8.dp
+                            )
+                    ) {
+                        Text(category)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = {
+                            onCategorySelected(category)
+                        },
+                        shape = MaterialTheme.shapes.large,
+                        contentPadding = androidx.compose.foundation.layout
+                            .PaddingValues(
+                                horizontal = 16.dp,
+                                vertical = 8.dp
+                            )
+                    ) {
+                        Text(category)
+                    }
+                }
+            }
         }
 
         Row(
@@ -386,10 +524,19 @@ private fun ExpenseContent(
                 onAddExpense = onAddExpense
             )
 
+        } else if (filteredExpenses.isEmpty()) {
+
+            EmptyFilteredExpensesCard(
+                onClearFilters = {
+                    onSearchQueryChange("")
+                    onCategorySelected("All")
+                }
+            )
+
         } else {
 
             ExpenseList(
-                expenses = expenses,
+                expenses = filteredExpenses,
                 onDelete = onDelete
             )
         }
@@ -872,6 +1019,63 @@ private fun EmptyExpensesCard(
                 )
 
                 Text("  Add First Expense")
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyFilteredExpensesCard(
+    onClearFilters: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor =
+                MaterialTheme
+                    .colorScheme
+                    .surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                modifier = Modifier.size(38.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "No matching expenses",
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            Text(
+                text = "Try a different search or category filter.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            OutlinedButton(
+                onClick = onClearFilters,
+                shape = MaterialTheme.shapes.large
+            ) {
+                Text("Show All Expenses")
             }
         }
     }
