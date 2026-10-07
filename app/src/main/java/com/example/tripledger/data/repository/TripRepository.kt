@@ -10,6 +10,7 @@ import com.example.tripledger.data.remote.TripPlaceResponse
 import com.example.tripledger.data.remote.TripResponse
 import com.example.tripledger.data.remote.TripTimelineResponse
 import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class TripRepository(
     private val apiService: ApiService
@@ -201,13 +202,18 @@ class TripRepository(
     suspend fun uploadTripPhoto(
         token: String,
         tripId: Int,
-        photo: MultipartBody.Part
+        photo: MultipartBody.Part,
+        caption: String? = null
     ): Result<TripPhotoResponse> {
         return try {
             val response = apiService.uploadTripPhoto(
                 authorization = "Bearer $token",
                 tripId = tripId,
-                photo = photo
+                photo = photo,
+                caption = caption
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.toRequestBody()
             )
 
             if (response.isSuccessful && response.body() != null) {

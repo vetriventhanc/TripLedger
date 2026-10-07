@@ -1,6 +1,7 @@
 package com.example.tripledger.data.remote
 
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -76,7 +77,8 @@ interface ApiService {
     suspend fun uploadTripPhoto(
         @Header("Authorization") authorization: String,
         @Path("tripId") tripId: Int,
-        @Part photo: MultipartBody.Part
+        @Part photo: MultipartBody.Part,
+        @Part("caption") caption: RequestBody?
     ): Response<TripPhotoResponse>
 
     @Multipart

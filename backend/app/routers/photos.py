@@ -1,4 +1,3 @@
-import os
 import uuid
 from pathlib import Path
 
@@ -6,6 +5,7 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
+    Form,
     HTTPException,
     UploadFile,
     status,
@@ -43,6 +43,7 @@ MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
 async def upload_trip_photo(
     trip_id: int,
     photo: UploadFile = File(...),
+    caption: str | None = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -98,9 +99,13 @@ async def upload_trip_photo(
     # Store the relative URL in the database.
     photo_url = f"/uploads/trips/{trip_id}/{filename}"
 
+    # Clean up an empty caption.
+    cleaned_caption = caption.strip() if caption else None
+
     new_photo = TripPhoto(
         trip_id=trip_id,
         photo_url=photo_url,
+        caption=cleaned_caption or None,
     )
 
     db.add(new_photo)

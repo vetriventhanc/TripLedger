@@ -116,6 +116,18 @@ fun TripDetailScreen(
         mutableStateOf<TripPhotoResponse?>(null)
     }
 
+    var pendingMemoryUri by remember {
+        mutableStateOf<Uri?>(null)
+    }
+
+    var memoryCaption by remember {
+        mutableStateOf("")
+    }
+
+    var isUploadingMemory by remember {
+        mutableStateOf(false)
+    }
+
     var showContent by remember {
         mutableStateOf(false)
     }
@@ -182,48 +194,10 @@ fun TripDetailScreen(
                 return@rememberLauncherForActivityResult
             }
 
-            scope.launch {
-                message = "Uploading memory..."
-
-                val photoPart = uriToMultipart(
-                    context = context,
-                    uri = uri
-                )
-
-                if (photoPart == null) {
-                    message = "Unsupported image format"
-                    return@launch
-                }
-
-                val result =
-                    tripViewModel.uploadTripPhoto(
-                        tripId = trip.id,
-                        photo = photoPart
-                    )
-
-                result
-                    .onSuccess {
-                        message = "Memory photo added!"
-
-                        tripViewModel
-                            .getTripPhotos(trip.id)
-                            .onSuccess { updatedPhotos ->
-                                photos = updatedPhotos
-                            }
-
-                        tripViewModel
-                            .getTripOverview(trip.id)
-                            .onSuccess { updatedOverview ->
-                                tripOverview = updatedOverview
-                            }
-                    }
-                    .onFailure { exception ->
-                        message =
-                            exception.message
-                                ?: "Photo upload failed"
-                    }
-            }
+            pendingMemoryUri = uri
+            memoryCaption = ""
         }
+
 
     LaunchedEffect(trip.id) {
         isLoading = true
@@ -662,6 +636,147 @@ fun TripDetailScreen(
                 )
                 selectedMemory = null
                 message = "Memory photo deleted"
+            }
+        )
+    }
+
+    if (pendingMemoryUri != null) {
+
+        AlertDialog(
+            onDismissRequest = {
+                if (!isUploadingMemory) {
+                    pendingMemoryUri = null
+                    memoryCaption = ""
+                }
+            },
+            title = {
+                Text(
+                    text = "Add Memory"
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement =
+                        Arrangement.spacedBy(12.dp)
+                ) {
+
+                    Text(
+                        text = "Add an optional caption to this memory photo.",
+                        color =
+                            MaterialTheme
+                                .colorScheme
+                                .onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = memoryCaption,
+                        onValueChange = {
+                            if (it.length <= 500) {
+                                memoryCaption = it
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = {
+                            Text("Caption")
+                        },
+                        placeholder = {
+                            Text("e.g. Sunset at Marina Beach")
+                        },
+                        supportingText = {
+                            Text("${memoryCaption.length}/500")
+                        },
+                        singleLine = false,
+                        maxLines = 4,
+                        enabled = !isUploadingMemory
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uri = pendingMemoryUri
+                            ?: return@Button
+
+                        scope.launch {
+                            isUploadingMemory = true
+                            message = "Uploading memory..."
+
+                            val photoPart =
+                                uriToMultipart(
+                                    context = context,
+                                    uri = uri
+                                )
+
+                            if (photoPart == null) {
+                                isUploadingMemory = false
+                                message = "Unsupported image format"
+                                return@launch
+                            }
+
+                            val caption =
+                                memoryCaption.trim()
+                                    .takeIf { it.isNotEmpty() }
+
+                            val result =
+                                tripViewModel.uploadTripPhoto(
+                                    tripId = trip.id,
+                                    photo = photoPart,
+                                    caption = caption
+                                )
+
+                            result
+                                .onSuccess {
+                                    message = "Memory photo added!"
+
+                                    tripViewModel
+                                        .getTripPhotos(trip.id)
+                                        .onSuccess { updatedPhotos ->
+                                            photos = updatedPhotos
+                                        }
+
+                                    tripViewModel
+                                        .getTripOverview(trip.id)
+                                        .onSuccess { updatedOverview ->
+                                            tripOverview = updatedOverview
+                                        }
+
+                                    pendingMemoryUri = null
+                                    memoryCaption = ""
+                                }
+                                .onFailure { exception ->
+                                    message =
+                                        exception.message
+                                            ?: "Photo upload failed"
+                                }
+
+                            isUploadingMemory = false
+                        }
+                    },
+                    enabled =
+                        !isUploadingMemory
+                ) {
+                    if (isUploadingMemory) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Upload Memory")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (!isUploadingMemory) {
+                            pendingMemoryUri = null
+                            memoryCaption = ""
+                        }
+                    },
+                    enabled = !isUploadingMemory
+                ) {
+                    Text("Cancel")
+                }
             }
         )
     }
@@ -1532,6 +1647,30 @@ private fun MemoryPhotoViewer(
                 )
             }
 
+            if (!photo.caption.isNullOrBlank()) {
+                Card(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(
+                            start = 16.dp,
+                            bottom = 16.dp,
+                            end = 80.dp
+                        ),
+                    colors = CardDefaults.cardColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.surface.copy(
+                                alpha = 0.90f
+                            )
+                    )
+                ) {
+                    Text(
+                        text = photo.caption!!,
+                        modifier = Modifier.padding(12.dp),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
             IconButton(
                 onClick = {
                     if (deleting) return@IconButton
@@ -1638,6 +1777,18 @@ private fun TripMemoryItem(
                     contentScale =
                         ContentScale.Crop
                 )
+
+                if (!photo.caption.isNullOrBlank()) {
+                    Text(
+                        text = photo.caption!!,
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 8.dp
+                        ),
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2
+                    )
+                }
 
                 Row(
                     modifier = Modifier
