@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -97,6 +99,7 @@ fun ExpensesScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(
                 horizontal = 20.dp,
                 vertical = 16.dp
@@ -398,6 +401,29 @@ private fun ExpenseContent(
             )
         }
 
+        AnimatedVisibility(
+            visible = expenses.isNotEmpty(),
+            enter =
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 400,
+                        delayMillis = 80
+                    )
+                ) +
+                        scaleIn(
+                            initialScale = 0.96f,
+                            animationSpec = tween(
+                                durationMillis = 400,
+                                delayMillis = 80
+                            )
+                        )
+        ) {
+
+            ExpenseIntelligenceCard(
+                expenses = expenses
+            )
+        }
+
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
@@ -648,27 +674,224 @@ private fun ExpenseSummaryCard(
 }
 
 @Composable
+private fun ExpenseIntelligenceCard(
+    expenses: List<TripExpenseResponse>
+) {
+    if (expenses.isEmpty()) {
+        return
+    }
+
+    val total = expenses.sumOf { it.amount }
+    val average = total / expenses.size
+    val largestExpense = expenses.maxByOrNull { it.amount }
+
+    val categoryTotals = expenses
+        .groupBy { it.category.trim().ifBlank { "Uncategorized" } }
+        .mapValues { (_, categoryExpenses) ->
+            categoryExpenses.sumOf { it.amount }
+        }
+
+    val topCategory = categoryTotals.maxByOrNull { it.value }
+    val topCategoryPercentage =
+        if (total > 0.0 && topCategory != null) {
+            (topCategory.value / total) * 100.0
+        } else {
+            0.0
+        }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor =
+                MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Card(
+                    modifier = Modifier.size(44.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 0.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Category,
+                            contentDescription = "Expense intelligence",
+                            modifier = Modifier.size(23.dp),
+                            tint =
+                                MaterialTheme.colorScheme
+                                    .onPrimaryContainer
+                        )
+                    }
+                }
+
+                Spacer(
+                    modifier = Modifier.size(12.dp)
+                )
+
+                Column {
+                    Text(
+                        text = "Expense Intelligence",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Quick insights from your spending",
+                        fontSize = 12.sp,
+                        color =
+                            MaterialTheme.colorScheme
+                                .onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                ExpenseInsightItem(
+                    modifier = Modifier.weight(1f),
+                    label = "Average",
+                    value = formatCurrency(average)
+                )
+
+                ExpenseInsightItem(
+                    modifier = Modifier.weight(1f),
+                    label = "Largest",
+                    value = formatCurrency(
+                        largestExpense?.amount ?: 0.0
+                    )
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor =
+                        MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Top spending category",
+                        fontSize = 12.sp,
+                        color =
+                            MaterialTheme.colorScheme
+                                .onSurfaceVariant
+                    )
+
+                    Text(
+                        text = topCategory?.key ?: "No category",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = if (topCategory != null) {
+                            "${formatCurrency(topCategory.value)} • ${
+                                String.format(
+                                    Locale.US,
+                                    "%.1f",
+                                    topCategoryPercentage
+                                )
+                            }% of total"
+                        } else {
+                            "No category data available"
+                        },
+                        fontSize = 13.sp,
+                        color =
+                            MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExpenseInsightItem(
+    modifier: Modifier = Modifier,
+    label: String,
+    value: String
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor =
+                MaterialTheme.colorScheme.secondaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp)
+        ) {
+            Text(
+                text = label,
+                fontSize = 12.sp,
+                color =
+                    MaterialTheme.colorScheme
+                        .onSecondaryContainer
+                        .copy(alpha = 0.75f)
+            )
+
+            Spacer(
+                modifier = Modifier.height(4.dp)
+            )
+
+            Text(
+                text = value,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color =
+                    MaterialTheme.colorScheme
+                        .onSecondaryContainer
+            )
+        }
+    }
+}
+
+@Composable
 private fun ExpenseList(
     expenses: List<TripExpenseResponse>,
     onDelete: (Int) -> Unit
 ) {
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding =
-            androidx.compose.foundation.layout
-                .PaddingValues(bottom = 100.dp),
-        verticalArrangement =
-            Arrangement.spacedBy(10.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-
-        items(
-            items = expenses,
-            key = {
-                it.id
-            }
-        ) { expense ->
-
+        expenses.forEach { expense ->
             ExpenseCard(
                 expense = expense,
                 onDelete = {
@@ -676,6 +899,10 @@ private fun ExpenseList(
                 }
             )
         }
+
+        Spacer(
+            modifier = Modifier.height(80.dp)
+        )
     }
 }
 
@@ -684,96 +911,70 @@ private fun ExpenseCard(
     expense: TripExpenseResponse,
     onDelete: () -> Unit
 ) {
-
-    var visible by remember {
-        mutableStateOf(false)
-    }
-
     var deleting by remember {
         mutableStateOf(false)
     }
 
-    LaunchedEffect(expense.id) {
-        delay(60)
-        visible = true
-    }
-
     AnimatedVisibility(
-        visible = visible && !deleting,
+        visible = !deleting,
         enter =
             fadeIn(
-                animationSpec = tween(350)
+                animationSpec = tween(300)
             ) +
-                    scaleIn(
-                        initialScale = 0.94f,
-                        animationSpec = tween(350)
+                    slideInVertically(
+                        initialOffsetY = { 20 },
+                        animationSpec = tween(300)
                     ),
         exit =
             fadeOut(
-                animationSpec = tween(220)
+                animationSpec = tween(200)
             ) +
                     scaleOut(
-                        targetScale = 0.85f,
-                        animationSpec = tween(220)
+                        targetScale = 0.95f,
+                        animationSpec = tween(200)
                     )
     ) {
-
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.extraLarge,
+            colors = CardDefaults.cardColors(
+                containerColor =
+                    MaterialTheme.colorScheme.surface
+            ),
             elevation = CardDefaults.cardElevation(
                 defaultElevation = 2.dp
             )
         ) {
-
             Column(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement =
-                    Arrangement.spacedBy(9.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment =
-                        Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Card(
                         modifier = Modifier.size(46.dp),
-                        shape =
-                            MaterialTheme.shapes.large,
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .primaryContainer
-                            ),
-                        elevation =
-                            CardDefaults.cardElevation(
-                                defaultElevation = 0.dp
-                            )
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(
+                            containerColor =
+                                MaterialTheme.colorScheme.primaryContainer
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 0.dp
+                        )
                     ) {
-
                         Column(
                             modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment =
-                                Alignment.CenterHorizontally,
-                            verticalArrangement =
-                                Arrangement.Center
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-
                             Icon(
-                                imageVector =
-                                    Icons.Default.ReceiptLong,
-                                contentDescription =
-                                    null,
-                                modifier =
-                                    Modifier.size(24.dp),
+                                imageVector = Icons.Default.ReceiptLong,
+                                contentDescription = null,
+                                modifier = Modifier.size(24.dp),
                                 tint =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .onPrimaryContainer
+                                    MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                     }
@@ -785,56 +986,38 @@ private fun ExpenseCard(
                     Column(
                         modifier = Modifier.weight(1f)
                     ) {
-
                         Text(
                             text = expense.title,
                             fontSize = 17.sp,
-                            fontWeight =
-                                FontWeight.Bold
+                            fontWeight = FontWeight.Bold
                         )
 
                         Text(
                             text = expense.category,
                             fontSize = 13.sp,
                             color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .onSurfaceVariant
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
                     Text(
-                        text =
-                            formatCurrency(
-                                expense.amount
-                            ),
+                        text = formatCurrency(expense.amount),
                         fontSize = 18.sp,
-                        fontWeight =
-                            FontWeight.Bold,
-                        color =
-                            MaterialTheme
-                                .colorScheme
-                                .primary
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment =
-                        Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     Icon(
-                        imageVector =
-                            Icons.Default.CalendarMonth,
-                        contentDescription =
-                            null,
-                        modifier =
-                            Modifier.size(17.dp),
+                        imageVector = Icons.Default.CalendarMonth,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp),
                         tint =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurfaceVariant
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(
@@ -845,9 +1028,7 @@ private fun ExpenseCard(
                         text = expense.expense_date,
                         fontSize = 13.sp,
                         color =
-                            MaterialTheme
-                                .colorScheme
-                                .onSurfaceVariant
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(
@@ -860,50 +1041,32 @@ private fun ExpenseCard(
                             onDelete()
                         }
                     ) {
-
                         Icon(
-                            imageVector =
-                                Icons.Default.Delete,
-                            contentDescription =
-                                "Delete expense",
-                            tint =
-                                MaterialTheme
-                                    .colorScheme
-                                    .error
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete expense",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
 
                 if (!expense.notes.isNullOrBlank()) {
-
                     Card(
-                        modifier =
-                            Modifier.fillMaxWidth(),
-                        shape =
-                            MaterialTheme.shapes.large,
-                        colors =
-                            CardDefaults.cardColors(
-                                containerColor =
-                                    MaterialTheme
-                                        .colorScheme
-                                        .surfaceVariant
-                            ),
-                        elevation =
-                            CardDefaults.cardElevation(
-                                defaultElevation = 0.dp
-                            )
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                        colors = CardDefaults.cardColors(
+                            containerColor =
+                                MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        elevation = CardDefaults.cardElevation(
+                            defaultElevation = 0.dp
+                        )
                     ) {
-
                         Text(
-                            text =
-                                expense.notes!!,
-                            modifier =
-                                Modifier.padding(11.dp),
+                            text = expense.notes!!,
+                            modifier = Modifier.padding(11.dp),
                             fontSize = 13.sp,
                             color =
-                                MaterialTheme
-                                    .colorScheme
-                                    .onSurfaceVariant
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
