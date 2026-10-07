@@ -67,6 +67,14 @@ private enum class TripFilter {
     COMPLETED
 }
 
+private enum class TripDateFilter {
+    ALL,
+    THIS_MONTH,
+    NEXT_MONTH,
+    THIS_YEAR,
+    PAST
+}
+
 @Composable
 fun TripsScreen(
     onTripClick: (Int) -> Unit,
@@ -88,6 +96,10 @@ fun TripsScreen(
 
     var selectedFilter by remember {
         mutableStateOf(TripFilter.ALL)
+    }
+
+    var selectedDateFilter by remember {
+        mutableStateOf(TripDateFilter.ALL)
     }
 
     LaunchedEffect(Unit) {
@@ -252,6 +264,13 @@ fun TripsScreen(
                         selectedFilter = it
                     }
                 )
+
+                TripDateFilters(
+                    selectedFilter = selectedDateFilter,
+                    onFilterSelected = {
+                        selectedDateFilter = it
+                    }
+                )
             }
         }
 
@@ -298,7 +317,13 @@ fun TripsScreen(
                                 tripStatus(trip) == TripFilter.COMPLETED
                         }
 
-                    matchesSearch && matchesStatus
+                    val matchesDate =
+                        tripMatchesDateFilter(
+                            trip = trip,
+                            filter = selectedDateFilter
+                        )
+
+                    matchesSearch && matchesStatus && matchesDate
                 }
 
                 if (state.trips.isEmpty()) {
@@ -314,12 +339,15 @@ fun TripsScreen(
                     NoTripSearchResults(
                         query = searchQuery,
                         selectedFilter = selectedFilter,
+                        selectedDateFilter = selectedDateFilter,
                         onClearSearch = {
                             searchQuery = ""
                             selectedFilter = TripFilter.ALL
+                            selectedDateFilter = TripDateFilter.ALL
                         },
                         onShowAll = {
                             selectedFilter = TripFilter.ALL
+                            selectedDateFilter = TripDateFilter.ALL
                         }
                     )
 
@@ -929,6 +957,108 @@ private fun TripStatusFilters(
 }
 
 @Composable
+private fun TripDateFilters(
+    selectedFilter: TripDateFilter,
+    onFilterSelected: (TripDateFilter) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TripFilterButton(
+            text = "All Dates",
+            selected = selectedFilter == TripDateFilter.ALL,
+            onClick = {
+                onFilterSelected(TripDateFilter.ALL)
+            }
+        )
+
+        TripFilterButton(
+            text = "This Month",
+            selected = selectedFilter == TripDateFilter.THIS_MONTH,
+            onClick = {
+                onFilterSelected(TripDateFilter.THIS_MONTH)
+            }
+        )
+
+        TripFilterButton(
+            text = "Next Month",
+            selected = selectedFilter == TripDateFilter.NEXT_MONTH,
+            onClick = {
+                onFilterSelected(TripDateFilter.NEXT_MONTH)
+            }
+        )
+
+        TripFilterButton(
+            text = "This Year",
+            selected = selectedFilter == TripDateFilter.THIS_YEAR,
+            onClick = {
+                onFilterSelected(TripDateFilter.THIS_YEAR)
+            }
+        )
+
+        TripFilterButton(
+            text = "Past",
+            selected = selectedFilter == TripDateFilter.PAST,
+            onClick = {
+                onFilterSelected(TripDateFilter.PAST)
+            }
+        )
+    }
+}
+
+private fun tripMatchesDateFilter(
+    trip: TripResponse,
+    filter: TripDateFilter
+): Boolean {
+    if (filter == TripDateFilter.ALL) {
+        return true
+    }
+
+    return try {
+        val startDate = LocalDate.parse(trip.start_date)
+        val endDate = LocalDate.parse(trip.end_date)
+        val today = LocalDate.now()
+
+        when (filter) {
+            TripDateFilter.ALL -> true
+
+            TripDateFilter.THIS_MONTH -> {
+                val monthStart = today.withDayOfMonth(1)
+                val monthEnd = today.withDayOfMonth(
+                    today.lengthOfMonth()
+                )
+
+                !endDate.isBefore(monthStart) &&
+                        !startDate.isAfter(monthEnd)
+            }
+
+            TripDateFilter.NEXT_MONTH -> {
+                val nextMonth = today.plusMonths(1)
+                val monthStart = nextMonth.withDayOfMonth(1)
+                val monthEnd = nextMonth.withDayOfMonth(
+                    nextMonth.lengthOfMonth()
+                )
+
+                !endDate.isBefore(monthStart) &&
+                        !startDate.isAfter(monthEnd)
+            }
+
+            TripDateFilter.THIS_YEAR -> {
+                startDate.year == today.year ||
+                        endDate.year == today.year
+            }
+
+            TripDateFilter.PAST -> {
+                endDate.isBefore(today)
+            }
+        }
+    } catch (_: Exception) {
+        false
+    }
+}
+
+@Composable
 private fun TripFilterButton(
     text: String,
     selected: Boolean,
@@ -986,6 +1116,7 @@ private fun tripStatus(
 private fun NoTripSearchResults(
     query: String,
     selectedFilter: TripFilter,
+    selectedDateFilter: TripDateFilter,
     onClearSearch: () -> Unit,
     onShowAll: () -> Unit
 ) {
@@ -1023,19 +1154,35 @@ private fun NoTripSearchResults(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = if (query.isNotBlank()) {
-                    "No trip matches \"$query\"."
-                } else {
-                    when (selectedFilter) {
-                        TripFilter.UPCOMING ->
-                            "No upcoming trips."
-                        TripFilter.ONGOING ->
-                            "No ongoing trips."
-                        TripFilter.COMPLETED ->
-                            "No completed trips."
-                        TripFilter.ALL ->
-                            "No trips match the current filters."
-                    }
+                text = when {
+                    query.isNotBlank() ->
+                        "No trip matches \"$query\"."
+
+                    selectedDateFilter != TripDateFilter.ALL ->
+                        when (selectedDateFilter) {
+                            TripDateFilter.THIS_MONTH ->
+                                "No trips in this month."
+                            TripDateFilter.NEXT_MONTH ->
+                                "No trips in next month."
+                            TripDateFilter.THIS_YEAR ->
+                                "No trips in this year."
+                            TripDateFilter.PAST ->
+                                "No past trips."
+                            TripDateFilter.ALL ->
+                                "No trips match the current filters."
+                        }
+
+                    else ->
+                        when (selectedFilter) {
+                            TripFilter.UPCOMING ->
+                                "No upcoming trips."
+                            TripFilter.ONGOING ->
+                                "No ongoing trips."
+                            TripFilter.COMPLETED ->
+                                "No completed trips."
+                            TripFilter.ALL ->
+                                "No trips match the current filters."
+                        }
                 },
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
