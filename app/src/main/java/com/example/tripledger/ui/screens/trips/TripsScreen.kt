@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,12 +52,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDate
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.tripledger.data.remote.TripResponse
 import com.example.tripledger.viewmodel.TripState
 import com.example.tripledger.viewmodel.TripViewModel
 import kotlinx.coroutines.delay
+
+private enum class TripFilter {
+    ALL,
+    UPCOMING,
+    ONGOING,
+    COMPLETED
+}
 
 @Composable
 fun TripsScreen(
@@ -71,6 +80,14 @@ fun TripsScreen(
 
     var showContent by remember {
         mutableStateOf(false)
+    }
+
+    var searchQuery by remember {
+        mutableStateOf("")
+    }
+
+    var selectedFilter by remember {
+        mutableStateOf(TripFilter.ALL)
     }
 
     LaunchedEffect(Unit) {
@@ -184,6 +201,60 @@ fun TripsScreen(
             )
         }
 
+        AnimatedVisibility(
+            visible = showContent && tripState is TripState.Success,
+            enter = fadeIn(
+                animationSpec = tween(350)
+            ) + slideInVertically(
+                initialOffsetY = { 20 },
+                animationSpec = tween(350)
+            )
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = {
+                        Text("Search trips")
+                    },
+                    placeholder = {
+                        Text("Search by title or destination")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search trips"
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            TextButton(
+                                onClick = {
+                                    searchQuery = ""
+                                }
+                            ) {
+                                Text("Clear")
+                            }
+                        }
+                    },
+                    shape = MaterialTheme.shapes.large
+                )
+
+                TripStatusFilters(
+                    selectedFilter = selectedFilter,
+                    onFilterSelected = {
+                        selectedFilter = it
+                    }
+                )
+            }
+        }
+
         when (val state = tripState) {
 
             is TripState.Idle -> {
@@ -202,6 +273,34 @@ fun TripsScreen(
 
             is TripState.Success -> {
 
+                val filteredTrips = state.trips.filter { trip ->
+                    val query = searchQuery.trim()
+
+                    val matchesSearch =
+                        query.isBlank() ||
+                                trip.title.contains(
+                                    query,
+                                    ignoreCase = true
+                                ) ||
+                                trip.destination.contains(
+                                    query,
+                                    ignoreCase = true
+                                )
+
+                    val matchesStatus =
+                        when (selectedFilter) {
+                            TripFilter.ALL -> true
+                            TripFilter.UPCOMING ->
+                                tripStatus(trip) == TripFilter.UPCOMING
+                            TripFilter.ONGOING ->
+                                tripStatus(trip) == TripFilter.ONGOING
+                            TripFilter.COMPLETED ->
+                                tripStatus(trip) == TripFilter.COMPLETED
+                        }
+
+                    matchesSearch && matchesStatus
+                }
+
                 if (state.trips.isEmpty()) {
 
                     EmptyTripsState(
@@ -210,10 +309,24 @@ fun TripsScreen(
                         }
                     )
 
+                } else if (filteredTrips.isEmpty()) {
+
+                    NoTripSearchResults(
+                        query = searchQuery,
+                        selectedFilter = selectedFilter,
+                        onClearSearch = {
+                            searchQuery = ""
+                            selectedFilter = TripFilter.ALL
+                        },
+                        onShowAll = {
+                            selectedFilter = TripFilter.ALL
+                        }
+                    )
+
                 } else {
 
                     TripList(
-                        trips = state.trips,
+                        trips = filteredTrips,
                         onTripClick = onTripClick,
                         onDeleteTrip = {
                             tripViewModel.deleteTrip(it)
@@ -767,6 +880,173 @@ private fun CreateTripCard(
                     text = "Save Trip",
                     fontWeight = FontWeight.SemiBold
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripStatusFilters(
+    selectedFilter: TripFilter,
+    onFilterSelected: (TripFilter) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        TripFilterButton(
+            text = "All",
+            selected = selectedFilter == TripFilter.ALL,
+            onClick = {
+                onFilterSelected(TripFilter.ALL)
+            }
+        )
+
+        TripFilterButton(
+            text = "Upcoming",
+            selected = selectedFilter == TripFilter.UPCOMING,
+            onClick = {
+                onFilterSelected(TripFilter.UPCOMING)
+            }
+        )
+
+        TripFilterButton(
+            text = "Ongoing",
+            selected = selectedFilter == TripFilter.ONGOING,
+            onClick = {
+                onFilterSelected(TripFilter.ONGOING)
+            }
+        )
+
+        TripFilterButton(
+            text = "Completed",
+            selected = selectedFilter == TripFilter.COMPLETED,
+            onClick = {
+                onFilterSelected(TripFilter.COMPLETED)
+            }
+        )
+    }
+}
+
+@Composable
+private fun TripFilterButton(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    if (selected) {
+        Button(
+            onClick = onClick,
+            shape = MaterialTheme.shapes.large,
+            contentPadding = PaddingValues(
+                horizontal = 12.dp,
+                vertical = 8.dp
+            )
+        ) {
+            Text(text)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            shape = MaterialTheme.shapes.large,
+            contentPadding = PaddingValues(
+                horizontal = 12.dp,
+                vertical = 8.dp
+            )
+        ) {
+            Text(text)
+        }
+    }
+}
+
+private fun tripStatus(
+    trip: TripResponse
+): TripFilter {
+    return try {
+        val today = LocalDate.now()
+        val startDate = LocalDate.parse(trip.start_date)
+        val endDate = LocalDate.parse(trip.end_date)
+
+        when {
+            today.isBefore(startDate) ->
+                TripFilter.UPCOMING
+
+            today.isAfter(endDate) ->
+                TripFilter.COMPLETED
+
+            else ->
+                TripFilter.ONGOING
+        }
+    } catch (_: Exception) {
+        TripFilter.ALL
+    }
+}
+
+@Composable
+private fun NoTripSearchResults(
+    query: String,
+    selectedFilter: TripFilter,
+    onClearSearch: () -> Unit,
+    onShowAll: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "No search results",
+                modifier = Modifier.size(42.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "No trips found",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = if (query.isNotBlank()) {
+                    "No trip matches \"$query\"."
+                } else {
+                    when (selectedFilter) {
+                        TripFilter.UPCOMING ->
+                            "No upcoming trips."
+                        TripFilter.ONGOING ->
+                            "No ongoing trips."
+                        TripFilter.COMPLETED ->
+                            "No completed trips."
+                        TripFilter.ALL ->
+                            "No trips match the current filters."
+                    }
+                },
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedButton(
+                onClick = onClearSearch,
+                shape = MaterialTheme.shapes.large
+            ) {
+                Text("Show All Trips")
             }
         }
     }
