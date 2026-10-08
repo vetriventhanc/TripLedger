@@ -45,6 +45,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -557,6 +558,32 @@ fun TripDetailScreen(
                 analytics = tripExpenseAnalytics,
                 memoryCount = photos.size,
                 placesCount = placesCount
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showContent,
+            enter =
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 450,
+                        delayMillis = 195
+                    )
+                ) +
+                        slideInVertically(
+                            initialOffsetY = { 38 },
+                            animationSpec = tween(
+                                durationMillis = 450,
+                                delayMillis = 195
+                            )
+                        )
+        ) {
+            TripShareSummaryCard(
+                trip = trip,
+                overview = tripOverview,
+                analytics = tripExpenseAnalytics,
+                placesCount = placesCount,
+                memoryCount = photos.size
             )
         }
 
@@ -2031,6 +2058,222 @@ private fun CompletionDetailRow(
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold
         )
+    }
+}
+
+@Composable
+private fun TripShareSummaryCard(
+    trip: TripResponse,
+    overview: TripOverviewResponse?,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    placesCount: Int,
+    memoryCount: Int
+) {
+    val durationDays = overview?.duration_days ?: 0
+    val totalSpent = analytics?.total_expenses
+        ?: overview?.total_expenses
+        ?: 0.0
+    val expenseCount = analytics?.expense_count ?: 0
+    val averageExpense = analytics?.average_expense ?: 0.0
+
+    val topCategory = analytics
+        ?.categories
+        ?.maxByOrNull { it.total }
+
+    val topCategoryText = topCategory?.let {
+        "${it.category} • ₹${String.format(java.util.Locale.US, "%.2f", it.total)}"
+    } ?: "No spending category"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Text(
+                text = "Trip Share Summary",
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = "A clean preview of the information ready for future sharing or export.",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(
+                    alpha = 0.75f
+                )
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = trip.title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    text = trip.destination,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Text(
+                    text = "${trip.start_date} → ${trip.end_date}",
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer.copy(
+                        alpha = 0.75f
+                    )
+                )
+            }
+
+            if (!trip.description.isNullOrBlank()) {
+                Text(
+                    text = trip.description,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                )
+            }
+
+            HorizontalDivider()
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripShareStat(
+                    value = durationDays.toString(),
+                    label = if (durationDays == 1) "Day" else "Days",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripShareStat(
+                    value = placesCount.toString(),
+                    label = "Places",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripShareStat(
+                    value = memoryCount.toString(),
+                    label = "Memories",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripShareStat(
+                    value = expenseCount.toString(),
+                    label = "Expenses",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripShareStat(
+                    value = "₹${String.format(java.util.Locale.US, "%.0f", totalSpent)}",
+                    label = "Spent",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripShareStat(
+                    value = "₹${String.format(java.util.Locale.US, "%.0f", averageExpense)}",
+                    label = "Avg. Expense",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(
+                        alpha = 0.65f
+                    )
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "Top spending category",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Text(
+                        text = topCategoryText,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Text(
+                text = "Share/export actions will be connected in a later step.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(
+                    alpha = 0.65f
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun TripShareStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(
+                alpha = 0.65f
+            )
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = value,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
