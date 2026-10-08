@@ -2144,13 +2144,24 @@ private fun buildTripSummaryText(
     val expenseCount = analytics?.expense_count ?: 0
     val averageExpense = analytics?.average_expense ?: 0.0
 
+    val today = java.time.LocalDate.now()
+    val startDate = runCatching { java.time.LocalDate.parse(trip.start_date) }.getOrNull()
+    val endDate = runCatching { java.time.LocalDate.parse(trip.end_date) }.getOrNull()
+
+    val status = when {
+        startDate == null || endDate == null -> "Unknown"
+        today.isBefore(startDate) -> "Upcoming"
+        today.isAfter(endDate) -> "Completed"
+        else -> "Ongoing"
+    }
+
     val topCategory = analytics
         ?.categories
         ?.maxByOrNull { it.total }
 
     val description = trip.description
         ?.takeIf { it.isNotBlank() }
-        ?: "No trip description"
+        ?: "No trip description provided."
 
     val categoryTotals = analytics
         ?.categories
@@ -2158,113 +2169,121 @@ private fun buildTripSummaryText(
         .orEmpty()
 
     return buildString {
-        appendLine("TripLedger - Trip Report")
-        appendLine("=".repeat(28))
-        appendLine()
-        appendLine("TRIP DETAILS")
-        appendLine("-".repeat(28))
-        appendLine("Trip: ${trip.title}")
-        appendLine("Destination: ${trip.destination}")
-        appendLine("Dates: ${trip.start_date} to ${trip.end_date}")
-        appendLine(
-            "Duration: $durationDays " +
-                    if (durationDays == 1) "day" else "days"
-        )
-        appendLine("Description: $description")
+        appendLine("TRIPLEDGER")
+        appendLine("TRIP REPORT")
+        appendLine("=".repeat(42))
         appendLine()
 
         appendLine("TRIP OVERVIEW")
-        appendLine("-".repeat(28))
-        appendLine("Places visited: $placesCount")
-        appendLine("Memories: $memoryCount")
-        appendLine("Expenses: $expenseCount")
+        appendLine("-".repeat(42))
+        appendLine("Trip        : ${trip.title}")
+        appendLine("Destination : ${trip.destination}")
+        appendLine("Dates       : ${trip.start_date} to ${trip.end_date}")
+        appendLine("Duration    : $durationDays ${if (durationDays == 1) "day" else "days"}")
+        appendLine("Status      : $status")
+        appendLine("Description : $description")
+        appendLine()
+
+        appendLine("AT A GLANCE")
+        appendLine("-".repeat(42))
+        appendLine("Places visited : $placesCount")
+        appendLine("Memories       : $memoryCount")
+        appendLine("Expenses       : $expenseCount")
+        appendLine("Total spent    : ₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}")
+        appendLine("Average expense: ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}")
         appendLine(
-            "Total spent: ₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}"
-        )
-        appendLine(
-            "Average expense: ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}"
-        )
-        appendLine(
-            "Top spending category: " +
-                    (topCategory?.category ?: "No spending category")
+            "Top category   : ${topCategory?.category ?: "No spending category"}"
         )
         if (topCategory != null && totalSpent > 0.0) {
             val percentage = (topCategory.total / totalSpent) * 100.0
             appendLine(
-                "Top category share: " +
-                        "${String.format(java.util.Locale.US, "%.1f", percentage)}%"
+                "Category share : ${String.format(java.util.Locale.US, "%.1f", percentage)}%"
             )
         }
         appendLine()
 
+        appendLine("DESCRIPTION")
+        appendLine("-".repeat(42))
+        appendLine(description)
+        appendLine()
+
         appendLine("PLACES VISITED")
-        appendLine("-".repeat(28))
+        appendLine("-".repeat(42))
         if (places.isEmpty()) {
-            appendLine("No place details available.")
+            appendLine("No places recorded for this trip.")
         } else {
             places
                 .sortedBy { it.visit_date }
                 .forEachIndexed { index, place ->
-                    appendLine(
-                        "${index + 1}. ${place.name} — ${place.location}"
-                    )
-                    appendLine("   Visit date: ${place.visit_date}")
+                    appendLine("${index + 1}. ${place.name}")
+                    appendLine("   Location : ${place.location}")
+                    appendLine("   Date     : ${place.visit_date}")
                     if (!place.notes.isNullOrBlank()) {
-                        appendLine("   Notes: ${place.notes}")
+                        appendLine("   Notes    : ${place.notes}")
                     }
+                    if (index < places.lastIndex) appendLine()
                 }
         }
         appendLine()
 
         appendLine("MEMORIES")
-        appendLine("-".repeat(28))
+        appendLine("-".repeat(42))
         if (photos.isEmpty()) {
-            appendLine("No memory details available.")
+            appendLine("No memories recorded for this trip.")
         } else {
             photos.forEachIndexed { index, photo ->
-                appendLine("${index + 1}. Memory ${index + 1}")
-                appendLine("   Photo: ${photo.photo_url}")
+                appendLine("${index + 1}. Memory")
                 if (!photo.memory_date.isNullOrBlank()) {
-                    appendLine("   Memory date: ${photo.memory_date}")
+                    appendLine("   Date    : ${photo.memory_date}")
                 }
                 if (!photo.caption.isNullOrBlank()) {
-                    appendLine("   Caption: ${photo.caption}")
+                    appendLine("   Caption : ${photo.caption}")
                 }
+                appendLine("   Photo   : ${photo.photo_url}")
+                if (index < photos.lastIndex) appendLine()
             }
         }
         appendLine()
 
-        appendLine("EXPENSE BREAKDOWN")
-        appendLine("-".repeat(28))
+        appendLine("FINANCIAL SUMMARY")
+        appendLine("-".repeat(42))
+        appendLine("Total spent     : ₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}")
+        appendLine("Expense count   : $expenseCount")
+        appendLine("Average expense : ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}")
+        appendLine()
+
+        appendLine("EXPENSE CATEGORY BREAKDOWN")
+        appendLine("-".repeat(42))
         if (categoryTotals.isEmpty()) {
             appendLine("No category breakdown available.")
         } else {
-            categoryTotals.forEach { category ->
-                val percentage =
-                    if (totalSpent > 0.0) {
-                        (category.total / totalSpent) * 100.0
-                    } else {
-                        0.0
-                    }
+            categoryTotals.forEachIndexed { index, category ->
+                val percentage = if (totalSpent > 0.0) {
+                    (category.total / totalSpent) * 100.0
+                } else {
+                    0.0
+                }
 
+                appendLine("${index + 1}. ${category.category}")
                 appendLine(
-                    "${category.category}: " +
-                            "₹${String.format(java.util.Locale.US, "%.2f", category.total)} " +
-                            "(${String.format(java.util.Locale.US, "%.1f", percentage)}%)"
+                    "   Amount   : ₹${String.format(java.util.Locale.US, "%.2f", category.total)}"
+                )
+                appendLine(
+                    "   Share    : ${String.format(java.util.Locale.US, "%.1f", percentage)}%"
                 )
             }
         }
         appendLine()
 
-        appendLine("NOTE")
-        appendLine("-".repeat(28))
+        appendLine("REPORT NOTES")
+        appendLine("-".repeat(42))
         appendLine(
-            "Individual expense records are not included in this export " +
-                    "because the current analytics response provides category-level " +
-                    "expense totals rather than the full expense list."
+            "Individual expense records are not included because the current " +
+                    "analytics response provides category-level expense totals " +
+                    "rather than the full expense list."
         )
         appendLine()
-        appendLine("Exported from TripLedger")
+        appendLine("Generated by TripLedger")
     }
 }
 
