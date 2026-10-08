@@ -120,6 +120,10 @@ fun TripDetailScreen(
         mutableStateOf<String?>(null)
     }
 
+    var pendingExportText by remember {
+        mutableStateOf<String?>(null)
+    }
+
     var showEditDialog by remember {
         mutableStateOf(false)
     }
@@ -235,6 +239,33 @@ fun TripDetailScreen(
             memoryDate = ""
         }
 
+    val exportFileLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.CreateDocument("text/plain")
+        ) { uri: Uri? ->
+            val exportText = pendingExportText
+            pendingExportText = null
+
+            if (uri == null || exportText == null) {
+                return@rememberLauncherForActivityResult
+            }
+
+            runCatching {
+                context.contentResolver
+                    .openOutputStream(uri)
+                    ?.bufferedWriter()
+                    ?.use { writer ->
+                        writer.write(exportText)
+                    }
+                    ?: error("Unable to open the selected file")
+            }.onSuccess {
+                message = "Trip report exported successfully."
+            }.onFailure { exception ->
+                message =
+                    exception.message
+                        ?: "Trip report export failed."
+            }
+        }
 
     LaunchedEffect(trip.id) {
         isLoading = true
@@ -594,6 +625,22 @@ fun TripDetailScreen(
                         placesCount = placesCount,
                         memoryCount = photos.size
                     )
+                },
+                onExportClick = {
+                    pendingExportText = buildTripSummaryText(
+                        trip = trip,
+                        overview = tripOverview,
+                        analytics = tripExpenseAnalytics,
+                        placesCount = placesCount,
+                        memoryCount = photos.size
+                    )
+
+                    val safeTitle = trip.title
+                        .replace(Regex("[^A-Za-z0-9._-]+"), "_")
+                        .trim('_')
+                        .ifBlank { "TripLedger_Trip" }
+
+                    exportFileLauncher.launch("$safeTitle.txt")
                 }
             )
         }
@@ -2072,6 +2119,60 @@ private fun CompletionDetailRow(
     }
 }
 
+private fun buildTripSummaryText(
+    trip: TripResponse,
+    overview: TripOverviewResponse?,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    placesCount: Int,
+    memoryCount: Int
+): String {
+    val durationDays = overview?.duration_days ?: 0
+    val totalSpent = analytics?.total_expenses
+        ?: overview?.total_expenses
+        ?: 0.0
+    val expenseCount = analytics?.expense_count ?: 0
+    val averageExpense = analytics?.average_expense ?: 0.0
+
+    val topCategory = analytics
+        ?.categories
+        ?.maxByOrNull { it.total }
+
+    val topCategoryText = topCategory?.let {
+        "${it.category} • ₹${String.format(java.util.Locale.US, "%.2f", it.total)}"
+    } ?: "No spending category"
+
+    val description = trip.description
+        ?.takeIf { it.isNotBlank() }
+        ?: "No trip description"
+
+    return buildString {
+        appendLine("TripLedger - Trip Summary")
+        appendLine()
+        appendLine("Trip: ${trip.title}")
+        appendLine("Destination: ${trip.destination}")
+        appendLine("Dates: ${trip.start_date} to ${trip.end_date}")
+        appendLine(
+            "Duration: $durationDays " +
+                    if (durationDays == 1) "day" else "days"
+        )
+        appendLine()
+        appendLine("Description: $description")
+        appendLine()
+        appendLine("Places visited: $placesCount")
+        appendLine("Memories: $memoryCount")
+        appendLine("Expenses: $expenseCount")
+        appendLine(
+            "Total spent: ₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}"
+        )
+        appendLine(
+            "Average expense: ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}"
+        )
+        appendLine("Top spending category: $topCategoryText")
+        appendLine()
+        appendLine("Exported from TripLedger")
+    }
+}
+
 private fun shareTripSummary(
     context: android.content.Context,
     trip: TripResponse,
@@ -2099,29 +2200,13 @@ private fun shareTripSummary(
         ?.takeIf { it.isNotBlank() }
         ?: "No trip description"
 
-    val shareText = buildString {
-        appendLine("TripLedger - Trip Summary")
-        appendLine()
-        appendLine("Trip: ${trip.title}")
-        appendLine("Destination: ${trip.destination}")
-        appendLine("Dates: ${trip.start_date} to ${trip.end_date}")
-        appendLine("Duration: $durationDays ${if (durationDays == 1) "day" else "days"}")
-        appendLine()
-        appendLine("Description: $description")
-        appendLine()
-        appendLine("Places visited: $placesCount")
-        appendLine("Memories: $memoryCount")
-        appendLine("Expenses: $expenseCount")
-        appendLine(
-            "Total spent: ₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}"
-        )
-        appendLine(
-            "Average expense: ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}"
-        )
-        appendLine("Top spending category: $topCategoryText")
-        appendLine()
-        appendLine("Shared from TripLedger")
-    }
+    val shareText = buildTripSummaryText(
+        trip = trip,
+        overview = overview,
+        analytics = analytics,
+        placesCount = placesCount,
+        memoryCount = memoryCount
+    )
 
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/plain"
@@ -2144,7 +2229,8 @@ private fun TripShareSummaryCard(
     analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
     placesCount: Int,
     memoryCount: Int,
-    onShareClick: () -> Unit
+    onShareClick: () -> Unit,
+    onExportClick: () -> Unit
 ) {
     val durationDays = overview?.duration_days ?: 0
     val totalSpent = analytics?.total_expenses
@@ -2309,6 +2395,15 @@ private fun TripShareSummaryCard(
             ) {
                 Text(
                     text = "Share Trip Summary"
+                )
+            }
+
+            OutlinedButton(
+                onClick = onExportClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Export Trip Report"
                 )
             }
 
