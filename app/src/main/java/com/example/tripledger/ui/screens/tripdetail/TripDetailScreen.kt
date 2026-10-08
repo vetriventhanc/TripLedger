@@ -477,7 +477,7 @@ fun TripDetailScreen(
                         )
         ) {
 
-            TripInsightsCard(
+            TripFinancialSummaryCard(
                 overview = tripOverview,
                 analytics = tripExpenseAnalytics,
                 placesCount = placesCount
@@ -1028,7 +1028,7 @@ fun TripDetailScreen(
 }
 
 @Composable
-private fun TripInsightsCard(
+private fun TripFinancialSummaryCard(
     overview: TripOverviewResponse?,
     analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
     placesCount: Int
@@ -1037,9 +1037,26 @@ private fun TripInsightsCard(
     val totalExpenses = analytics?.total_expenses
         ?: overview?.total_expenses
         ?: 0.0
+
     val averageDailySpend =
         if (durationDays > 0) {
             totalExpenses / durationDays
+        } else {
+            0.0
+        }
+
+    val averageExpense = analytics?.average_expense ?: 0.0
+    val expenseCount = analytics?.expense_count ?: 0
+
+    // The analytics response provides totals by category, so the largest
+    // category total is the largest spending figure available here.
+    val largestCategory = analytics
+        ?.categories
+        ?.maxByOrNull { it.total }
+
+    val topCategoryPercentage =
+        if (totalExpenses > 0.0 && largestCategory != null) {
+            (largestCategory.total / totalExpenses) * 100.0
         } else {
             0.0
         }
@@ -1065,7 +1082,7 @@ private fun TripInsightsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    imageVector = Icons.Default.TrendingUp,
+                    imageVector = Icons.Default.AccountBalanceWallet,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -1074,17 +1091,34 @@ private fun TripInsightsCard(
                 Spacer(modifier = Modifier.size(8.dp))
 
                 Text(
-                    text = "Trip Insights",
+                    text = "Trip Financial Summary",
                     fontSize = 21.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
             Text(
-                text = "A quick summary of how this journey is going.",
+                text = "A quick view of this trip's spending.",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = "₹${"%.2f".format(totalExpenses)}",
+                    label = "Total Spent",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = "₹${"%.2f".format(averageExpense)}",
+                    label = "Avg Expense",
+                    modifier = Modifier.weight(1f)
+                )
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1097,29 +1131,73 @@ private fun TripInsightsCard(
                 )
 
                 TripInsightStat(
-                    value = "${analytics?.expense_count ?: 0}",
+                    value = expenseCount.toString(),
                     label = "Expenses",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = largestCategory?.let {
+                        "₹${"%.2f".format(it.total)}"
+                    } ?: "₹0.00",
+                    label = "Top Category",
                     modifier = Modifier.weight(1f)
                 )
 
                 TripInsightStat(
-                    value = "$placesCount",
+                    value = placesCount.toString(),
                     label = "Places",
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            if (analytics != null && analytics.categories.isNotEmpty()) {
-                val topCategory =
-                    analytics.categories.maxByOrNull { it.total }
-
-                if (topCategory != null) {
-                    Text(
-                        text = "Top spending category: ${topCategory.category} · ₹${"%.2f".format(topCategory.total)}",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+            largestCategory?.let { category ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor =
+                            MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 0.dp
                     )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalArrangement =
+                            Arrangement.spacedBy(5.dp)
+                    ) {
+                        Text(
+                            text = "Top spending category",
+                            fontSize = 13.sp,
+                            color =
+                                MaterialTheme.colorScheme
+                                    .onPrimaryContainer
+                                    .copy(alpha = 0.75f)
+                        )
+
+                        Text(
+                            text = category.category,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Text(
+                            text =
+                                "₹${"%.2f".format(category.total)} · " +
+                                        "${"%.1f".format(topCategoryPercentage)}% of total spending",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
