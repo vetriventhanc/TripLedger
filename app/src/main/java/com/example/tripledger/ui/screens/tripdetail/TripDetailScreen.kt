@@ -490,6 +490,32 @@ fun TripDetailScreen(
                 fadeIn(
                     animationSpec = tween(
                         durationMillis = 450,
+                        delayMillis = 170
+                    )
+                ) +
+                        slideInVertically(
+                            initialOffsetY = { 32 },
+                            animationSpec = tween(
+                                durationMillis = 450,
+                                delayMillis = 170
+                            )
+                        )
+        ) {
+            SmartTripSummaryCard(
+                trip = trip,
+                overview = tripOverview,
+                analytics = tripExpenseAnalytics,
+                placesCount = placesCount,
+                memoryCount = photos.size
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showContent,
+            enter =
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 450,
                         delayMillis = 180
                     )
                 ) +
@@ -1201,6 +1227,240 @@ private fun TripFinancialSummaryCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SmartTripSummaryCard(
+    trip: TripResponse,
+    overview: TripOverviewResponse?,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    placesCount: Int,
+    memoryCount: Int
+) {
+    val durationDays = overview?.duration_days ?: 0
+    val totalSpent = analytics?.total_expenses
+        ?: overview?.total_expenses
+        ?: 0.0
+    val expenseCount = analytics?.expense_count ?: 0
+    val averageExpense = analytics?.average_expense ?: 0.0
+
+    val averagePerDay =
+        if (durationDays > 0) totalSpent / durationDays else 0.0
+
+    val topCategory = analytics
+        ?.categories
+        ?.maxByOrNull { it.total }
+
+    val topCategoryPercentage =
+        if (totalSpent > 0.0 && topCategory != null) {
+            (topCategory.total / totalSpent) * 100.0
+        } else {
+            0.0
+        }
+
+    val status = remember(trip.start_date, trip.end_date) {
+        runCatching {
+            val today = java.time.LocalDate.now()
+            val start = java.time.LocalDate.parse(trip.start_date)
+            val end = java.time.LocalDate.parse(trip.end_date)
+
+            when {
+                today.isBefore(start) -> "Upcoming"
+                today.isAfter(end) -> "Completed"
+                else -> "Ongoing"
+            }
+        }.getOrDefault("Trip")
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.TrendingUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Smart Trip Summary",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Your trip at a glance",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                            alpha = 0.75f
+                        )
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = status,
+                    label = "Status",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = durationDays.toString(),
+                    label = if (durationDays == 1) "Day" else "Days",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = placesCount.toString(),
+                    label = "Places",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = memoryCount.toString(),
+                    label = if (memoryCount == 1) "Memory" else "Memories",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = expenseCount.toString(),
+                    label = "Expenses",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(
+                        alpha = 0.7f
+                    )
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Text(
+                        text = "Spending snapshot",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    SmartSummaryRow(
+                        label = "Total spent",
+                        value = "₹${"%.2f".format(totalSpent)}"
+                    )
+
+                    SmartSummaryRow(
+                        label = "Average expense",
+                        value = "₹${"%.2f".format(averageExpense)}"
+                    )
+
+                    SmartSummaryRow(
+                        label = "Average per day",
+                        value = "₹${"%.2f".format(averagePerDay)}"
+                    )
+
+                    if (topCategory != null) {
+                        SmartSummaryRow(
+                            label = "Top category",
+                            value =
+                                "${topCategory.category} · " +
+                                        "₹${"%.2f".format(topCategory.total)}"
+                        )
+
+                        SmartSummaryRow(
+                            label = "Top category share",
+                            value = "${"%.1f".format(topCategoryPercentage)}%"
+                        )
+                    } else {
+                        SmartSummaryRow(
+                            label = "Top category",
+                            value = "No expense data"
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text =
+                    if (expenseCount > 0) {
+                        "You have recorded $expenseCount " +
+                                if (expenseCount == 1) "expense" else "expenses" +
+                                        " across $placesCount " +
+                                        if (placesCount == 1) "place." else "places."
+                    } else {
+                        "No expenses have been recorded for this trip yet."
+                    },
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                    alpha = 0.8f
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SmartSummaryRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
