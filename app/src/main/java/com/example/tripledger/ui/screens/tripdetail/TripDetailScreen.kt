@@ -516,6 +516,31 @@ fun TripDetailScreen(
                 fadeIn(
                     animationSpec = tween(
                         durationMillis = 450,
+                        delayMillis = 175
+                    )
+                ) +
+                        slideInVertically(
+                            initialOffsetY = { 34 },
+                            animationSpec = tween(
+                                durationMillis = 450,
+                                delayMillis = 175
+                            )
+                        )
+        ) {
+            TripActivityInsightsCard(
+                trip = trip,
+                analytics = tripExpenseAnalytics,
+                memoryCount = photos.size,
+                placesCount = placesCount
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showContent,
+            enter =
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 450,
                         delayMillis = 180
                     )
                 ) +
@@ -1551,6 +1576,170 @@ private fun TripOverviewLoading() {
                         .colorScheme
                         .onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun TripActivityInsightsCard(
+    trip: TripResponse,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    memoryCount: Int,
+    placesCount: Int
+) {
+    val expenseCount = analytics?.expense_count ?: 0
+
+    // The backend timeline contains:
+    // 1 trip-start event + each expense + each memory + 1 trip-end event.
+    val timelineEventCount = 2 + expenseCount + memoryCount
+
+    val durationDays = runCatching {
+        val start = java.time.LocalDate.parse(trip.start_date)
+        val end = java.time.LocalDate.parse(trip.end_date)
+        java.time.temporal.ChronoUnit.DAYS.between(start, end).toInt() + 1
+    }.getOrDefault(0)
+
+    val activityPerDay =
+        if (durationDays > 0) {
+            timelineEventCount.toDouble() / durationDays.toDouble()
+        } else {
+            0.0
+        }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Timeline,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Trip Activity Insights",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "Activity represented in your trip timeline",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = timelineEventCount.toString(),
+                    label = if (timelineEventCount == 1) "Event" else "Events",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = expenseCount.toString(),
+                    label = "Expenses",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = memoryCount.toString(),
+                    label = if (memoryCount == 1) "Memory" else "Memories",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                TripInsightStat(
+                    value = placesCount.toString(),
+                    label = if (placesCount == 1) "Place" else "Places",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = durationDays.toString(),
+                    label = if (durationDays == 1) "Day" else "Days",
+                    modifier = Modifier.weight(1f)
+                )
+
+                TripInsightStat(
+                    value = String.format("%.1f", activityPerDay),
+                    label = "Events / Day",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = "Timeline coverage",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = "${trip.start_date} → ${trip.end_date}",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+
+                    Text(
+                        text =
+                            "The timeline records the trip start and end, " +
+                                    "$expenseCount expense " +
+                                    if (expenseCount == 1) "event" else "events" +
+                                            ", and $memoryCount memory " +
+                                            if (memoryCount == 1) "event." else "events.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                            alpha = 0.75f
+                        )
+                    )
+                }
+            }
         }
     }
 }
