@@ -1,5 +1,6 @@
 package com.example.tripledger.ui.screens.tripdetail
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -583,7 +584,17 @@ fun TripDetailScreen(
                 overview = tripOverview,
                 analytics = tripExpenseAnalytics,
                 placesCount = placesCount,
-                memoryCount = photos.size
+                memoryCount = photos.size,
+                onShareClick = {
+                    shareTripSummary(
+                        context = context,
+                        trip = trip,
+                        overview = tripOverview,
+                        analytics = tripExpenseAnalytics,
+                        placesCount = placesCount,
+                        memoryCount = photos.size
+                    )
+                }
             )
         }
 
@@ -2061,13 +2072,79 @@ private fun CompletionDetailRow(
     }
 }
 
+private fun shareTripSummary(
+    context: android.content.Context,
+    trip: TripResponse,
+    overview: TripOverviewResponse?,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    placesCount: Int,
+    memoryCount: Int
+) {
+    val durationDays = overview?.duration_days ?: 0
+    val totalSpent = analytics?.total_expenses
+        ?: overview?.total_expenses
+        ?: 0.0
+    val expenseCount = analytics?.expense_count ?: 0
+    val averageExpense = analytics?.average_expense ?: 0.0
+
+    val topCategory = analytics
+        ?.categories
+        ?.maxByOrNull { it.total }
+
+    val topCategoryText = topCategory?.let {
+        "${it.category} - ₹${String.format(java.util.Locale.US, "%.2f", it.total)}"
+    } ?: "No spending category"
+
+    val description = trip.description
+        ?.takeIf { it.isNotBlank() }
+        ?: "No trip description"
+
+    val shareText = buildString {
+        appendLine("TripLedger - Trip Summary")
+        appendLine()
+        appendLine("Trip: ${trip.title}")
+        appendLine("Destination: ${trip.destination}")
+        appendLine("Dates: ${trip.start_date} to ${trip.end_date}")
+        appendLine("Duration: $durationDays ${if (durationDays == 1) "day" else "days"}")
+        appendLine()
+        appendLine("Description: $description")
+        appendLine()
+        appendLine("Places visited: $placesCount")
+        appendLine("Memories: $memoryCount")
+        appendLine("Expenses: $expenseCount")
+        appendLine(
+            "Total spent: ₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}"
+        )
+        appendLine(
+            "Average expense: ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}"
+        )
+        appendLine("Top spending category: $topCategoryText")
+        appendLine()
+        appendLine("Shared from TripLedger")
+    }
+
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_SUBJECT, "Trip Summary - ${trip.title}")
+        putExtra(Intent.EXTRA_TEXT, shareText)
+    }
+
+    val chooser = Intent.createChooser(
+        shareIntent,
+        "Share Trip Summary"
+    )
+
+    context.startActivity(chooser)
+}
+
 @Composable
 private fun TripShareSummaryCard(
     trip: TripResponse,
     overview: TripOverviewResponse?,
     analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
     placesCount: Int,
-    memoryCount: Int
+    memoryCount: Int,
+    onShareClick: () -> Unit
 ) {
     val durationDays = overview?.duration_days ?: 0
     val totalSpent = analytics?.total_expenses
@@ -2226,8 +2303,17 @@ private fun TripShareSummaryCard(
                 }
             }
 
+            Button(
+                onClick = onShareClick,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Share Trip Summary"
+                )
+            }
+
             Text(
-                text = "Share/export actions will be connected in a later step.",
+                text = "Uses Android's system share sheet.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onTertiaryContainer.copy(
                     alpha = 0.65f
