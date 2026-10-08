@@ -108,6 +108,10 @@ fun TripDetailScreen(
         mutableStateOf(0)
     }
 
+    var tripPlaces by remember {
+        mutableStateOf<List<com.example.tripledger.data.remote.TripPlaceResponse>>(emptyList())
+    }
+
     var isLoading by remember {
         mutableStateOf(true)
     }
@@ -293,6 +297,7 @@ fun TripDetailScreen(
         tripViewModel
             .getTripPlaces(trip.id)
             .onSuccess { places ->
+                tripPlaces = places
                 placesCount = places.size
             }
 
@@ -623,7 +628,9 @@ fun TripDetailScreen(
                         overview = tripOverview,
                         analytics = tripExpenseAnalytics,
                         placesCount = placesCount,
-                        memoryCount = photos.size
+                        memoryCount = photos.size,
+                        places = tripPlaces,
+                        photos = photos
                     )
                 },
                 onExportClick = {
@@ -632,7 +639,9 @@ fun TripDetailScreen(
                         overview = tripOverview,
                         analytics = tripExpenseAnalytics,
                         placesCount = placesCount,
-                        memoryCount = photos.size
+                        memoryCount = photos.size,
+                        places = tripPlaces,
+                        photos = photos
                     )
 
                     val safeTitle = trip.title
@@ -2124,7 +2133,9 @@ private fun buildTripSummaryText(
     overview: TripOverviewResponse?,
     analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
     placesCount: Int,
-    memoryCount: Int
+    memoryCount: Int,
+    places: List<com.example.tripledger.data.remote.TripPlaceResponse> = emptyList(),
+    photos: List<TripPhotoResponse> = emptyList()
 ): String {
     val durationDays = overview?.duration_days ?: 0
     val totalSpent = analytics?.total_expenses
@@ -2137,17 +2148,21 @@ private fun buildTripSummaryText(
         ?.categories
         ?.maxByOrNull { it.total }
 
-    val topCategoryText = topCategory?.let {
-        "${it.category} • ₹${String.format(java.util.Locale.US, "%.2f", it.total)}"
-    } ?: "No spending category"
-
     val description = trip.description
         ?.takeIf { it.isNotBlank() }
         ?: "No trip description"
 
+    val categoryTotals = analytics
+        ?.categories
+        ?.sortedByDescending { it.total }
+        .orEmpty()
+
     return buildString {
-        appendLine("TripLedger - Trip Summary")
+        appendLine("TripLedger - Trip Report")
+        appendLine("=".repeat(28))
         appendLine()
+        appendLine("TRIP DETAILS")
+        appendLine("-".repeat(28))
         appendLine("Trip: ${trip.title}")
         appendLine("Destination: ${trip.destination}")
         appendLine("Dates: ${trip.start_date} to ${trip.end_date}")
@@ -2155,9 +2170,11 @@ private fun buildTripSummaryText(
             "Duration: $durationDays " +
                     if (durationDays == 1) "day" else "days"
         )
-        appendLine()
         appendLine("Description: $description")
         appendLine()
+
+        appendLine("TRIP OVERVIEW")
+        appendLine("-".repeat(28))
         appendLine("Places visited: $placesCount")
         appendLine("Memories: $memoryCount")
         appendLine("Expenses: $expenseCount")
@@ -2167,7 +2184,85 @@ private fun buildTripSummaryText(
         appendLine(
             "Average expense: ₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}"
         )
-        appendLine("Top spending category: $topCategoryText")
+        appendLine(
+            "Top spending category: " +
+                    (topCategory?.category ?: "No spending category")
+        )
+        if (topCategory != null && totalSpent > 0.0) {
+            val percentage = (topCategory.total / totalSpent) * 100.0
+            appendLine(
+                "Top category share: " +
+                        "${String.format(java.util.Locale.US, "%.1f", percentage)}%"
+            )
+        }
+        appendLine()
+
+        appendLine("PLACES VISITED")
+        appendLine("-".repeat(28))
+        if (places.isEmpty()) {
+            appendLine("No place details available.")
+        } else {
+            places
+                .sortedBy { it.visit_date }
+                .forEachIndexed { index, place ->
+                    appendLine(
+                        "${index + 1}. ${place.name} — ${place.location}"
+                    )
+                    appendLine("   Visit date: ${place.visit_date}")
+                    if (!place.notes.isNullOrBlank()) {
+                        appendLine("   Notes: ${place.notes}")
+                    }
+                }
+        }
+        appendLine()
+
+        appendLine("MEMORIES")
+        appendLine("-".repeat(28))
+        if (photos.isEmpty()) {
+            appendLine("No memory details available.")
+        } else {
+            photos.forEachIndexed { index, photo ->
+                appendLine("${index + 1}. Memory ${index + 1}")
+                appendLine("   Photo: ${photo.photo_url}")
+                if (!photo.memory_date.isNullOrBlank()) {
+                    appendLine("   Memory date: ${photo.memory_date}")
+                }
+                if (!photo.caption.isNullOrBlank()) {
+                    appendLine("   Caption: ${photo.caption}")
+                }
+            }
+        }
+        appendLine()
+
+        appendLine("EXPENSE BREAKDOWN")
+        appendLine("-".repeat(28))
+        if (categoryTotals.isEmpty()) {
+            appendLine("No category breakdown available.")
+        } else {
+            categoryTotals.forEach { category ->
+                val percentage =
+                    if (totalSpent > 0.0) {
+                        (category.total / totalSpent) * 100.0
+                    } else {
+                        0.0
+                    }
+
+                appendLine(
+                    "${category.category}: " +
+                            "₹${String.format(java.util.Locale.US, "%.2f", category.total)} " +
+                            "(${String.format(java.util.Locale.US, "%.1f", percentage)}%)"
+                )
+            }
+        }
+        appendLine()
+
+        appendLine("NOTE")
+        appendLine("-".repeat(28))
+        appendLine(
+            "Individual expense records are not included in this export " +
+                    "because the current analytics response provides category-level " +
+                    "expense totals rather than the full expense list."
+        )
         appendLine()
         appendLine("Exported from TripLedger")
     }
@@ -2179,7 +2274,9 @@ private fun shareTripSummary(
     overview: TripOverviewResponse?,
     analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
     placesCount: Int,
-    memoryCount: Int
+    memoryCount: Int,
+    places: List<com.example.tripledger.data.remote.TripPlaceResponse> = emptyList(),
+    photos: List<TripPhotoResponse> = emptyList()
 ) {
     val durationDays = overview?.duration_days ?: 0
     val totalSpent = analytics?.total_expenses
@@ -2205,7 +2302,9 @@ private fun shareTripSummary(
         overview = overview,
         analytics = analytics,
         placesCount = placesCount,
-        memoryCount = memoryCount
+        memoryCount = memoryCount,
+        places = places,
+        photos = photos
     )
 
     val shareIntent = Intent(Intent.ACTION_SEND).apply {
