@@ -54,8 +54,8 @@ def health_check():
     try:
         with engine.connect():
             database_status = "connected"
-    except Exception as error:
-        database_status = f"error: {str(error)}"
+    except Exception:
+        database_status = "error"
 
     return {
         "status": "healthy",
