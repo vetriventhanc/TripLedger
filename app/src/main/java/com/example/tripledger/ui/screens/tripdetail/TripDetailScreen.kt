@@ -541,6 +541,31 @@ fun TripDetailScreen(
                 fadeIn(
                     animationSpec = tween(
                         durationMillis = 450,
+                        delayMillis = 185
+                    )
+                ) +
+                        slideInVertically(
+                            initialOffsetY = { 36 },
+                            animationSpec = tween(
+                                durationMillis = 450,
+                                delayMillis = 185
+                            )
+                        )
+        ) {
+            TripCompletionSummaryCard(
+                trip = trip,
+                analytics = tripExpenseAnalytics,
+                memoryCount = photos.size,
+                placesCount = placesCount
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showContent,
+            enter =
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = 450,
                         delayMillis = 180
                     )
                 ) +
@@ -1741,6 +1766,271 @@ private fun TripActivityInsightsCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TripCompletionSummaryCard(
+    trip: TripResponse,
+    analytics: com.example.tripledger.data.remote.TripExpenseAnalyticsResponse?,
+    memoryCount: Int,
+    placesCount: Int
+) {
+    val today = java.time.LocalDate.now()
+
+    val startDate = runCatching {
+        java.time.LocalDate.parse(trip.start_date)
+    }.getOrNull()
+
+    val endDate = runCatching {
+        java.time.LocalDate.parse(trip.end_date)
+    }.getOrNull()
+
+    val status =
+        when {
+            endDate != null && today.isAfter(endDate) -> "Completed"
+            startDate != null && endDate != null &&
+                    !today.isBefore(startDate) &&
+                    !today.isAfter(endDate) -> "Ongoing"
+            else -> "Upcoming"
+        }
+
+    val durationDays =
+        if (startDate != null && endDate != null) {
+            java.time.temporal.ChronoUnit.DAYS
+                .between(startDate, endDate)
+                .toInt() + 1
+        } else {
+            0
+        }
+
+    val expenseCount = analytics?.expense_count ?: 0
+    val totalSpent = analytics?.total_expenses ?: 0.0
+    val averageExpense = analytics?.average_expense ?: 0.0
+
+    val topCategory = analytics?.categories
+        ?.maxByOrNull { it.total }
+
+    val statusLabel =
+        when (status) {
+            "Completed" -> "Trip completed"
+            "Ongoing" -> "Trip in progress"
+            else -> "Trip planned"
+        }
+
+    val statusDescription =
+        when (status) {
+            "Completed" ->
+                "A final snapshot of the memories, places, activity, and spending recorded for this trip."
+            "Ongoing" ->
+                "A current snapshot of what has been recorded so far."
+            else ->
+                "A starting snapshot for this upcoming trip."
+        }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 1.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(26.dp)
+                )
+
+                Spacer(modifier = Modifier.size(8.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = "Trip Completion Summary",
+                        fontSize = 21.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Text(
+                        text = statusLabel,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Text(
+                text = statusDescription,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(
+                    alpha = 0.78f
+                )
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CompletionStat(
+                    value = durationDays.toString(),
+                    label = if (durationDays == 1) "Day" else "Days",
+                    modifier = Modifier.weight(1f)
+                )
+
+                CompletionStat(
+                    value = placesCount.toString(),
+                    label = if (placesCount == 1) "Place" else "Places",
+                    modifier = Modifier.weight(1f)
+                )
+
+                CompletionStat(
+                    value = memoryCount.toString(),
+                    label = if (memoryCount == 1) "Memory" else "Memories",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CompletionStat(
+                    value = expenseCount.toString(),
+                    label = if (expenseCount == 1) "Expense" else "Expenses",
+                    modifier = Modifier.weight(1f)
+                )
+
+                CompletionStat(
+                    value = "₹${String.format(java.util.Locale.US, "%.2f", totalSpent)}",
+                    label = "Total Spent",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                elevation = CardDefaults.cardElevation(
+                    defaultElevation = 0.dp
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(9.dp)
+                ) {
+                    Text(
+                        text = "At a glance",
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    CompletionDetailRow(
+                        label = "Average expense",
+                        value = "₹${String.format(java.util.Locale.US, "%.2f", averageExpense)}"
+                    )
+
+                    CompletionDetailRow(
+                        label = "Top spending category",
+                        value = topCategory?.category ?: "No expenses"
+                    )
+
+                    CompletionDetailRow(
+                        label = "Top category spending",
+                        value = topCategory?.let {
+                            "₹${String.format(java.util.Locale.US, "%.2f", it.total)}"
+                        } ?: "₹0.00"
+                    )
+
+                    CompletionDetailRow(
+                        label = "Trip dates",
+                        value = "${trip.start_date} → ${trip.end_date}"
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompletionStat(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 0.dp
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 13.dp, horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = value,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompletionDetailRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
